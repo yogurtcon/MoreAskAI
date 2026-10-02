@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html>
+<!--
+  chrome/src/html/sidepanel.html —— Chrome/Edge 原生侧边栏 (chrome.sidePanel) 页面.
+  【多 AI 同时挂载】: 把工作台当前激活的每个站点各嵌一个 <iframe>、全部常驻加载, 顶部下拉 / 两侧箭头切换"看哪个"
+  (切换不重载, 自带预加载效果), 底部输入框可【一次发给所有 AI】—— 等于贴在网页旁的竖版迷你工作台.
+
+  顶栏: [站点选择器(带 icon 的自定义下拉)] [当前 AI 新建会话] [新标签页打开当前] [设置(开工作台设置页)].
+  底栏: [所有 AI 新建会话(+)] [输入框] [工具箱] [发送到全部]. 划词(Alt+Shift+L)文本汇入这个输入框.
+        工具箱 = 分组 / 会话 / 常用语 三合一弹层 (工作台底部那三个入口在窄侧栏里的合并版, 逻辑见 sidepanel.js).
+
+  复用工作台同一套基础设施, 无需任何新逻辑:
+    · 侧栏里的每个 <iframe> 加载 AI 站点 origin → manifest 的 content_scripts 照常注入 content.js
+      + QwInject (注入器 / 登录加固 / URL 上报 / 主题), 与工作台格子里的 iframe 完全同款上下文.
+    · 反框架响应头由静态 rules.json (sub_frame 剥 X-Frame-Options/CSP) 处理, AI 站点已在 host_permissions
+      里, 故这些 iframe 能正常加载 —— 不需要 <all_urls>, 不新增任何 host 权限.
+    · "发送到全部"走父页 → 每个 iframe 的 postMessage('qw-sidebar-send') → content.js 调 QwInject.inject 注入并发送.
+      (侧栏页不是 tab, 工作台那套 chrome.tabs.sendMessage 够不到它的子 frame, 故用 postMessage; 见 sidepanel.js.)
+    · 站点配置走 configs-loader.js (window.rawUrls); 默认/激活集/主题/语言/图标走 QwState/QwI18n/QwBranding, 同源共享.
+
+  CSP: MV3 扩展页禁止内联 <script>, 逻辑全部在 sidepanel.js; 内联 <style> 允许.
+-->
+<head>
+  <meta charset="UTF-8">
+  <title data-i18n="sidepanel.title">多问 AI 侧边栏</title>
+  <style>
+    /* 主题: state.js 在 <html> 上写 data-qw-theme="dark|light"; 这里据此切换配色 (不依赖工作台 index.css) */
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --text: #1e293b;
+      --muted: #64748b;
+      --border: #e2e8f0;
+      --hover: #eef2f7;
+    }
+    html[data-qw-theme="dark"] {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --border: #2a2f3e;
+      --hover: #242838;
+    }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      width: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Segoe UI", "Microsoft YaHei", "Noto Sans", sans-serif;
+      overflow: hidden;
+    }
+    /* 三行: 顶部工具栏 / 中间多帧堆叠区 / 底部"发送到全部"输入条.
+       列用 minmax(0,1fr): 强制单列=视口宽且允许内容收缩, 否则窄侧栏下工具栏会按内容撑宽、把最右按钮顶出视口. */
+    body { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }
+
+    .qw-toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 8px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      box-sizing: border-box;
+      min-width: 0; /* 允许在窄宽下整体收缩, URL 条吸收剩余空间 */
+    }
+
+    .qw-tool-btn {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+    }
+    .qw-tool-btn:hover { background: var(--hover); color: var(--text); }
+    .qw-tool-btn svg { width: 16px; height: 16px; display: block; }
+
+    /* 群问/单聊 模式切换按钮: 用扩展自身 icon. 选中(qw-on)=群问(发给所有 AI); 未选中=单聊(只当前 AI) */
+    .qw-mode-btn {
+      flex: 0 0 auto;
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      cursor: pointer;
+      padding: 0;
+    }
+    .qw-mode-btn:hover { background: var(--hover); }
+    .qw-mode-ic { width: 18px; height: 18px; display: block; border-radius: 4px; }
+    .qw-mode-btn.qw-on { border-color: #2563eb; background: rgba(37, 99, 235, 0.12); }
+    /* 单聊(未选中): icon 去饱和 + 略透明, 暗示"群问未启用" */
+    .qw-mode-btn:not(.qw-on) .qw-mode-ic { filter: grayscale(0.65); opacity: 0.7; }
+
+    /* 当前站点 URL 条 (iframe 内 content.js 上报); flex:1 动态伸缩, 右侧那排按钮 flex:0 固定、优先显示.
+       复制按钮做在框【内部】右端: 默认隐藏且不挡选词, 悬停 URL 框时半透明浮现, 直接悬停按钮转实心; 复制成功弹气泡. */
+    .qw-url {
+      position: relative;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      height: 30px;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0 8px;
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 12px;
+    }
+    .qw-url-text {
+      flex: 1; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+      user-select: text; cursor: text;
+    }
+    .qw-url-copy {
+      position: absolute;
+      right: 3px; top: 50%;
+      transform: translateY(-50%);
+      width: 24px; height: 24px;
+      display: inline-flex; align-items: center; justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      opacity: 0;                 /* 默认隐藏 */
+      pointer-events: none;       /* 隐藏时不拦截 URL 框右端的选词/点击 */
+      transition: opacity 0.15s ease, background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+    }
+    .qw-url-copy svg { width: 14px; height: 14px; display: block; }
+    .qw-url:hover .qw-url-copy { opacity: 0.6; pointer-events: auto; }              /* 悬停 URL 框: 半透明浮现 */
+    .qw-url-copy:hover { opacity: 1; background: var(--hover); color: var(--text); } /* 悬停按钮本身: 实心 */
+    .qw-url-copy.qw-copied { opacity: 1; border-color: #4ade80; color: #16a34a; }   /* 复制成功: 淡绿描边 (1s 后由 JS 移除) */
+    /* 复制成功提示气泡 (从复制按钮下方浮出, 短暂显示) */
+    .qw-copied-tip {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      z-index: 40;
+      background: #16a34a;
+      color: #fff;
+      font-size: 11px;
+      line-height: 1;
+      padding: 4px 7px;
+      border-radius: 6px;
+      white-space: nowrap;
+      pointer-events: none;
+      opacity: 0;
+      transform: translateY(-3px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+    .qw-copied-tip.qw-show { opacity: 1; transform: translateY(0); }
+
+    /* 站点选择器: 缩成一个【只显示当前站点 icon】的按钮; 点击展开带 icon 的站点列表 (列表右对齐, 比按钮宽) */
+    .qw-site-picker { position: relative; flex: 0 0 auto; }
+    .qw-site-trigger {
+      width: 30px;
+      height: 30px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0;
+      background: var(--bg);
+      cursor: pointer;
+      outline: none;
+    }
+    .qw-site-trigger:hover { background: var(--hover); }
+    .qw-site-trigger.qw-open { border-color: #2563eb; }
+    .qw-site-ic { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; }
+
+    .qw-site-menu {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      z-index: 30;
+      min-width: 200px;
+      width: max-content;
+      max-width: 80vw;
+      max-height: 64vh;
+      overflow-y: auto;
+      padding: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      display: none;
+    }
+    .qw-site-menu.qw-open { display: block; }
+    .qw-site-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .qw-site-item:hover { background: var(--hover); }
+    .qw-site-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .qw-site-item.qw-active { background: var(--hover); }
+    .qw-site-item.qw-active .qw-site-item-name { font-weight: 600; }
+    .qw-site-check { flex: 0 0 auto; width: 16px; height: 16px; color: #2563eb; opacity: 0; }
+    .qw-site-item.qw-active .qw-site-check { opacity: 1; }
+    /* 菜单底部"添加站点": 居中 + 加号 (与左对齐的站点项视觉区分), 顶部分隔线 */
+    .qw-site-add {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin-top: 5px;
+      padding: 9px 8px;
+      border-top: 1px solid var(--border);
+      cursor: pointer;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .qw-site-add:hover { background: var(--hover); color: var(--text); }
+    .qw-site-add svg { flex: 0 0 auto; width: 15px; height: 15px; display: block; }
+
+    /* 下拉打开时的透明背板: 盖住整个面板(含跨域 iframe), 接住空白处/iframe 上的点击来关闭下拉.
+       (点击跨域 iframe 不会冒泡到父页 document, 故必须靠这层在 iframe 之上的背板; z-index 在 iframe 之上、菜单之下.) */
+    .qw-menu-backdrop { position: fixed; inset: 0; z-index: 29; display: none; }
+    .qw-menu-backdrop.qw-show { display: block; }
+
+    /* "更多"按钮下拉 (收纳"在新标签页打开"等). 右对齐挂在按钮下方, 与站点下拉共用背板关闭 */
+    .qw-more-picker { position: relative; flex: 0 0 auto; }
+    .qw-more-menu {
+      position: absolute;
+      top: calc(100% + 5px);
+      right: 0;
+      z-index: 30;
+      min-width: 160px;
+      padding: 5px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      display: none;
+    }
+    .qw-more-menu.qw-open { display: block; }
+    .qw-more-item {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 13px;
+    }
+    .qw-more-item:hover { background: var(--hover); }
+    .qw-more-item svg { flex: 0 0 auto; width: 16px; height: 16px; display: block; }
+
+    /* 站点图标 (branding.js 生成 <img class="qw-ai-icon"> 或字母头像 div.qw-ai-avatar), 规则对齐工作台 index.css */
+    .qw-ai-icon { display: inline-block; flex-shrink: 0; vertical-align: middle; user-select: none; }
+    .qw-ai-avatar { display: inline-flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; line-height: 1; }
+    html[data-qw-theme="dark"] img.qw-ai-icon-darkglyph { background: #fff; border-radius: 30%; box-shadow: 0 0 0 2px #fff; }
+
+    .qw-frame-wrap { position: relative; width: 100%; height: 100%; overflow: hidden; }
+
+    /* 多 AI 同时挂载: 每个站点一个 iframe, 全部塞进 stack 里【常驻加载】(=预加载/切换不重载).
+       只有"当前"那个 .qw-active 可见可点; 切换 = 改类(opacity/层级/pointer-events), 不动 src →
+       登录态/滚动/对话全部保留. */
+    .qw-frame-stack { position: absolute; inset: 0; }
+    .qw-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--surface);
+      opacity: 0;
+      z-index: 1;
+      pointer-events: none;
+      transform: translateX(0);
+      transition: opacity 0.4s ease, transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .qw-frame.qw-active { opacity: 1; z-index: 2; pointer-events: auto; }
+    /* 卡片切换转场: 新卡从切换方向【滑入 + 淡入】(先瞬间放到起始位=enter 类 transition:none, reflow 后切到
+       .qw-active → transform 归 0 触发滑入); 旧卡失去 .qw-active 后淡出. 方向由 sidepanel.js 按索引增减决定. */
+    .qw-frame.qw-enter-right { transform: translateX(38px); opacity: 0; transition: none; }
+    .qw-frame.qw-enter-left { transform: translateX(-38px); opacity: 0; transition: none; }
+
+    /* 加载态: 当前可见 iframe onload 前显示 (盖在 iframe 之上、箭头之下) */
+    .qw-loading {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .qw-loading.qw-hidden { display: none; }
+
+    /* 无可用站点的兜底提示 */
+    .qw-empty {
+      display: none;
+      z-index: 5;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 24px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* 左右切换 AI: 定位容器(不可点) + 内部箭头(默认隐藏, 唯一可点的东西). 指针靠近边缘 → 箭头浮现, 移开 → 淡出.
+       难点: 站点是跨域 iframe(OOPIF), 指针进去之后父页收不到 mousemove、祖先的 :hover 也不触发, 所以父页
+       【自己感知不到"指针靠近边缘"】。
+       ⚠️ 早先的做法是在 iframe 之上盖一块真元素当热区去接 hover(36px 宽 × 内容区高的 1/3, 实测 258px),
+       并把 click 挂在它身上。代价很重: 那一整条的点击【全被它吃掉】—— 站点自己贴边的按钮/滚动条点不到,
+       而且在离箭头很远处点一下就误切了站点(热区高是可见箭头 50px 的 5.2 倍)。
+       现在改成: 感知搬进站点帧(content.js 的 setupSidebarNavPeek 上报 qw-nav-peek, 横向 60px / 纵向中间 1/3,
+       比老热区更宽松), 父页这层退成 pointer-events:none 的纯定位容器, 只有那个 24×50 的可见箭头可点。
+       → 提示效果保留, 拦截面积从 36×258 降到 24×50, 且只有点在箭头上才切站。
+       .qw-nav-btn:hover 的老规则保留作兜底: 万一某站点没跑 content.js(未在 matches 里), 把鼠标移到最边缘
+       仍能让箭头现身。 */
+    .qw-nav-zone {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 36px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      pointer-events: none;   /* 关键: 容器不拦任何指针事件, 点击照常落进下面的站点 iframe */
+      z-index: 6;
+    }
+    .qw-nav-prev { left: 0; justify-content: flex-start; }
+    .qw-nav-next { right: 0; justify-content: flex-end; }
+    .qw-nav-zone .qw-nav-btn {
+      width: 24px;
+      height: 50px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.34);
+      color: #fff;
+      font-size: 22px;
+      line-height: 1;
+      opacity: 0;
+      pointer-events: auto;   /* 整个切换功能【唯一】可点的区域 */
+      cursor: pointer;
+      transition: opacity 0.15s ease, background 0.15s ease;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .qw-nav-prev .qw-nav-btn { border-radius: 0 9px 9px 0; }
+    .qw-nav-next .qw-nav-btn { border-radius: 9px 0 0 9px; }
+    /* 站点帧报来"指针靠近边缘", 或指针已经落在某个箭头上 → 左右箭头【一起】浮现(qw-hidden 那侧仍不显示) */
+    .qw-frame-wrap.qw-nav-peek .qw-nav-btn,
+    .qw-frame-wrap:has(.qw-nav-btn:hover) .qw-nav-btn { opacity: 1; }
+    /* 正指着的那个底色更深一点, 作点按提示 */
+    .qw-nav-btn:hover { background: rgba(0, 0, 0, 0.5); }
+    .qw-nav-zone.qw-hidden { display: none; }
+
+    /* 底部"发送到全部"输入条 */
+    .qw-composer {
+      display: flex;
+      gap: 6px;
+      align-items: flex-end;
+      padding: 8px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      box-sizing: border-box;
+      min-width: 0; /* 同工具栏: 窄宽下可整体收缩 */
+    }
+    /* 左侧"+": 所有 AI 新建会话 */
+    .qw-composer-add {
+      flex: 0 0 auto;
+      width: 36px;
+      height: 36px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: var(--bg);
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+    }
+    .qw-composer-add:hover { background: var(--hover); color: var(--text); }
+    .qw-composer-add svg { width: 18px; height: 18px; display: block; }
+    .qw-composer-input {
+      flex: 1;
+      min-width: 0;
+      resize: none;
+      height: 36px;
+      max-height: 120px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      font-family: inherit;
+      line-height: 1.4;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+    }
+    .qw-composer-input:focus { border-color: #2563eb; }
+    .qw-send-all {
+      flex: 0 0 auto;
+      border: none;
+      border-radius: 8px;
+      padding: 0 12px;
+      height: 36px;
+      font-size: 13px;
+      font-weight: 600;
+      background: #2563eb;
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .qw-send-all:hover { background: #1d4ed8; }
+    .qw-send-all:disabled { opacity: 0.5; cursor: default; }
+    /* 窄侧栏: 输入条一行摆不下 [新建][输入框][附件][发送到全部] —— 两个 36px 图标 + 发送键固定占掉
+       ~195px, 侧栏拖到最窄(240px)时输入框只剩 45 来像素. 故 290px 以下让输入框独占一行、按钮落到第二行
+       (290px 是算出来的临界: 再宽一点输入框就有 90px+ 可用; 工具箱移出输入条后从 330 降下来的). 用
+       order/flex-basis 换行, 不动 DOM 顺序. */
+    @media (max-width: 290px) {
+      .qw-composer { flex-wrap: wrap; }
+      .qw-composer-input { order: -1; flex: 1 1 100%; }
+      .qw-send-all { flex: 1 1 auto; }   /* 第二行剩余宽度给发送键, 免得右边留一段空白 */
+    }
+    /* 单聊模式: 整个底部区(附件预览条 + 输入条)隐藏 (grid 第三行自动塌缩) */
+    .qw-composer-wrap { min-width: 0; }
+    .qw-composer-wrap.qw-hidden { display: none; }
+
+    /* --- 附件预览条 (图片/文件): 渲染逻辑复用 shared/src/js/ui/attachments.js, 条目类名与工作台一致,
+           这里只给侧栏这套尺寸(缩略图 44px, 比工作台的 56px 小一档 —— 窄栏里一行能多摆一个). --- */
+    #qwAttachPreview {
+      display: none;
+      flex-wrap: wrap;
+      gap: 10px;
+      padding: 12px 8px 8px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      max-height: 108px;
+      overflow-y: auto;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    #qwAttachPreview.has-items { display: flex; }
+    /* 不裁剪溢出: 让删除按钮能露在角上 */
+    .attachment-item { position: relative; width: 44px; height: 44px; flex-shrink: 0; overflow: visible; }
+    .attachment-thumb {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      border-radius: 6px;
+      overflow: hidden;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .attachment-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .attachment-thumb .file-icon { font-size: 18px; color: var(--muted); }
+    .attachment-thumb .file-ext {
+      position: absolute;
+      bottom: 2px;
+      left: 2px;
+      right: 2px;
+      font-size: 9px;
+      color: #fff;
+      background: rgba(0, 0, 0, 0.55);
+      padding: 1px 2px;
+      border-radius: 3px;
+      text-align: center;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .attachment-item .remove-btn {
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #FF5A6A;
+      color: #fff;
+      font-size: 12px;
+      line-height: 18px;
+      text-align: center;
+      cursor: pointer;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+      display: none;
+      z-index: 5;
+    }
+    .attachment-item:hover .remove-btn { display: block; }
+    /* 拖文件到底部区域时高亮输入框 (drag-over 由 attachments.js 挂在 panel 元素上) */
+    .qw-composer-wrap.drag-over .qw-composer-input {
+      border-color: #2563eb;
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+    }
+
+    /* --- 工具箱 (右侧悬浮按钮): 分组 / 会话 / 常用语 三合一弹层, 逻辑见 sidepanel.js ---
+       为什么悬浮而不是塞进输入条: 输入条(.qw-composer-wrap)只在【群问】模式显示, 单聊模式整块 display:none,
+       按钮跟着一起没了 —— 而分组/会话/常用语跟发不发给所有 AI 无关, 两种模式都该能用. 故提到 .qw-frame-wrap 里浮着.
+       常驻但半透明, 悬停/展开时才实心 —— 盖在 AI 内容上要克制(同 .qw-nav-btn 的取向).
+       可拖动 + 右缘吸附, 逻辑复用工作台那组悬浮按钮的 fab-drag.js (由 sidepanel.js 调 attach 接管);
+       故用 right/bottom 锚定, bottom 的初值由 JS 写(SIDEBAR_FAB_BOTTOM), 这里不写死纵向位置. */
+    .qw-toolbox-fab {
+      position: absolute;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-sizing: border-box;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--muted);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.16);
+      opacity: 0.62;
+      cursor: pointer;
+      z-index: 6;   /* 同 .qw-nav-zone: 在 iframe(1/2) 之上、背板(29) 之下 */
+      transition: opacity 0.15s ease, color 0.15s ease;
+      user-select: none;    /* 拖动时别选中内容 */
+      touch-action: none;   /* 触屏拖动不被页面滚动抢走 (同工作台 .fab-container) */
+    }
+    .qw-toolbox-fab svg { width: 17px; height: 17px; display: block; }
+    .qw-toolbox-fab:hover { opacity: 1; color: var(--text); }
+    .qw-toolbox-fab.qw-on { opacity: 1; border-color: #2563eb; color: #2563eb; background: var(--surface); }
+    /* 松手后横向吸回右缘的过渡. 必须把本体那两条 transition 一并写上 —— 同属性覆盖, 漏写会让吸附期间
+       悬停变色/变实失去过渡. 时长与 fab-drag.js 的 SNAP_MS 保持一致. */
+    .qw-toolbox-fab.fab-snapping {
+      transition: right 0.32s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.15s ease, color 0.15s ease;
+    }
+    /* 拖动中: 保持实心(不然半透明的按钮跟着手走很飘), 光标换抓手 */
+    .qw-toolbox-fab.fab-dragging { opacity: 1; color: var(--text); cursor: grabbing; }
+    /* 拖动时的全屏透明罩: 站点是跨域 iframe, 指针划进去宿主页就收不到 pointermove, 拖拽会半路卡死.
+       z-index 只需高过 .qw-frame(1/2)、低于按钮自身(6). */
+    .fab-drag-shield {
+      position: fixed;
+      inset: 0;
+      z-index: 5;
+      background: transparent;
+      cursor: grabbing;
+    }
+
+    /* 弹层浮在工具箱悬浮按钮【上方】, bottom 与 max-height 都由 JS 按按钮实测位置算
+       (按钮在 70% 处, 往上的可用高度有限, 只靠 62vh 兜不住 → JS 再夹一道, 见 positionToolsPop).
+       宽度固定 340px (同工作台常用语弹层 .preset-popover), 右对齐挂在工具箱按钮那一侧 —— 侧栏被拖宽时
+       弹层不跟着摊满, 内容(分组名/常用语)不会拉成一行超长; 侧栏窄于 356px 时 max-width 收回来,
+       退化成原先的左右各留 8px 满宽.
+       z-index 与站点/更多下拉同层(30) —— 都在背板(29)之上, 共用那块背板接住 iframe 上的点击来关闭. */
+    .qw-tools-pop {
+      position: fixed;
+      right: 8px;
+      width: 340px;
+      max-width: calc(100% - 16px);
+      box-sizing: border-box;
+      z-index: 30;
+      display: none;
+      flex-direction: column;
+      max-height: 62vh;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      overflow: hidden;
+    }
+    .qw-tools-pop.qw-open { display: flex; }
+
+    /* 顶部四分段: 分组 / 会话 / 常用语 / 记录 */
+    .qw-tools-seg {
+      flex: 0 0 auto;
+      display: flex;
+      gap: 4px;
+      padding: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .qw-tools-seg-btn {
+      flex: 1 1 0;
+      min-width: 0;
+      padding: 6px 4px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 12px;
+      font-family: inherit;
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .qw-tools-seg-btn:hover { color: var(--text); }
+    .qw-tools-seg-btn.qw-on { background: var(--hover); color: var(--text); font-weight: 600; }
+
+    .qw-tools-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 5px; }
+
+    /* 顶部动作 ("＋ 保存为分组" / "＋ 保存当前会话" / "＋ 存入当前输入") 与底部"管理…"入口 */
+    .qw-tools-action, .qw-tools-manage {
+      display: block;
+      width: 100%;
+      padding: 8px;
+      border: none;
+      background: transparent;
+      color: #2563eb;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+      border-radius: 7px;
+    }
+    .qw-tools-action { margin-bottom: 4px; border-bottom: 1px solid var(--border); border-radius: 7px 7px 0 0; }
+    .qw-tools-manage { margin-top: 4px; border-top: 1px solid var(--border); border-radius: 0 0 7px 7px; }
+    .qw-tools-action:hover, .qw-tools-manage:hover { background: var(--hover); }
+
+    /* 展开后的命名行 (Enter 确认 / Esc 收起) */
+    .qw-tools-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px 2px 8px;
+      margin-bottom: 4px;
+      border-bottom: 1px solid var(--border);
+    }
+    .qw-tools-name-input {
+      flex: 1 1 auto;
+      min-width: 0;
+      box-sizing: border-box;
+      padding: 7px 9px;
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      background: var(--bg);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .qw-tools-name-input:focus { border-color: #2563eb; }
+    .qw-tools-name-ok {
+      flex: 0 0 auto;
+      padding: 7px 11px;
+      border: none;
+      border-radius: 7px;
+      background: #2563eb;
+      color: #fff;
+      font-size: 13px;
+      font-family: inherit;
+      cursor: pointer;
+    }
+
+    /* 列表行 (分组 / 会话 / 常用语 / 记录 共用) */
+    .qw-tools-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      border-radius: 7px;
+      cursor: pointer;
+    }
+    .qw-tools-item:hover { background: var(--hover); }
+    .qw-tools-item-main { flex: 1 1 auto; min-width: 0; }
+    .qw-tools-item-name {
+      font-size: 13px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .qw-tools-strong { font-weight: 600; }
+    .qw-tools-avatars { display: flex; align-items: center; gap: 4px; margin-top: 4px; overflow: hidden; }
+    .qw-tools-meta {
+      margin-top: 3px;
+      font-size: 11px;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .qw-tools-count { flex: 0 0 auto; font-size: 11px; color: var(--muted); }
+    /* 常用语/发送记录正文: 最多两行, 超出省略 (两者都常是整段提示词) */
+    .qw-tools-preset-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      word-break: break-word;
+    }
+    /* 行尾删除钮: 平时隐形, 悬停该行/键盘聚焦时现身. 隐藏态连命中一起禁掉, 免得触屏点行尾"无提示删除" (同工作台 .session-del) */
+    .qw-tools-del {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border: none;
+      border-radius: 50%;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      padding: 0;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .qw-tools-del svg { width: 14px; height: 14px; display: block; }
+    .qw-tools-item:hover .qw-tools-del, .qw-tools-del:focus-visible { opacity: 1; pointer-events: auto; }
+    .qw-tools-del:hover { color: #dc2626; background: var(--bg); }
+
+    .qw-tools-empty { padding: 16px 10px; text-align: center; font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+    /* 轻量 toast (保存/切换/恢复的结果反馈; 工作台那套 QwToast 在这页没有) */
+    /* bottom 由 JS 按底部区(附件预览条 + 输入条)的实际高度算 —— 这里的 64px 只是首帧兜底(约等于"只有输入条"时的高度).
+       写死不行: 挂了附件后底部区会长到 116~160px, 提示正好盖住缩略图, 而"内容已还原"这条 toast 恰恰是带着附件弹的. */
+    .qw-toast {
+      position: fixed;
+      left: 50%;
+      bottom: 64px;
+      transform: translate(-50%, 6px);
+      z-index: 50;
+      max-width: calc(100% - 32px);
+      padding: 7px 12px;
+      border-radius: 8px;
+      background: rgba(15, 17, 23, 0.92);
+      color: #fff;
+      font-size: 12px;
+      line-height: 1.4;
+      text-align: center;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+    }
+    .qw-toast.qw-show { opacity: 1; transform: translate(-50%, 0); }
+</style>
+</head>
+
+<body>
+  <div class="qw-toolbar">
+    <!-- 当前 AI 站点 URL (由 iframe 内 content.js 上报, 同主界面). 复制按钮在框内右端, 悬停浮现; 复制成功弹气泡 -->
+    <div class="qw-url">
+      <span id="qwUrlText" class="qw-url-text"></span>
+      <button id="qwCopyUrl" class="qw-url-copy" type="button" data-i18n-attr="title:sidepanel.copyUrl;aria-label:sidepanel.copyUrl" title="复制链接">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h9"/>
+        </svg>
+      </button>
+      <div id="qwCopiedTip" class="qw-copied-tip" data-i18n="sidepanel.copied">已复制</div>
+    </div>
+
+    <!-- 站点选择器: 缩成"当前站点 icon"按钮, 点击展开站点列表 -->
+    <div class="qw-site-picker">
+      <button id="qwSiteTrigger" class="qw-site-trigger" type="button" aria-haspopup="listbox" data-i18n-attr="title:sidepanel.selectTitle;aria-label:sidepanel.selectTitle">
+        <span id="qwSiteTriggerIcon" class="qw-site-ic"></span>
+      </button>
+      <div id="qwSiteMenu" class="qw-site-menu" role="listbox"></div>
+    </div>
+
+    <!-- 群问/单聊 模式切换 (用扩展 icon): 选中=群问(发给所有 AI); 未选中=单聊(只当前 AI, 隐藏底部输入框) -->
+    <div id="qwModeToggle" class="qw-mode-btn" role="button" aria-pressed="true">
+      <img class="qw-mode-ic" src="../../../shared/res/icons/icon48.png" alt="" draggable="false">
+    </div>
+
+    <!-- 新建会话: 重载【当前】站点 (带新 _t) -->
+    <div id="qwSidebarHome" class="qw-tool-btn" role="button" data-i18n-attr="title:frame.new">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </div>
+
+    <!-- 刷新当前页 (重载当前 URL, 保留会话; 区别于"新建会话"的回首页) -->
+    <div id="qwSidebarRefresh" class="qw-tool-btn" role="button" data-i18n-attr="title:frame.refresh">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <polyline points="23 4 23 10 17 10"/>
+        <polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+      </svg>
+    </div>
+
+    <!-- 在新标签页打开当前站点 -->
+    <!-- 更多: 窄侧栏做收纳, 把"在新标签页打开"等收进点击展开的下拉 -->
+    <div class="qw-more-picker">
+      <div id="qwSidebarMore" class="qw-tool-btn" role="button" data-i18n-attr="title:frame.more" title="更多">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+      </div>
+      <div id="qwMoreMenu" class="qw-more-menu" role="menu">
+        <div id="qwMoreOpenTab" class="qw-more-item" role="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg>
+          <span data-i18n="frame.openNewTab">在新标签页打开</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="qw-frame-wrap">
+    <!-- sidepanel.js 往这里塞每个激活站点的 <iframe class="qw-frame">, 全部常驻加载, 只有当前那个加 .qw-active -->
+    <div id="qwFrameStack" class="qw-frame-stack"></div>
+    <!-- 左右切换 AI (上一个 / 下一个, 不循环). 边缘透明热区, 鼠标靠近才显现箭头; 点击切换"看哪个". -->
+    <div id="qwNavPrev" class="qw-nav-zone qw-nav-prev" role="button" title=""><div class="qw-nav-btn">‹</div></div>
+    <div id="qwNavNext" class="qw-nav-zone qw-nav-next" role="button" title=""><div class="qw-nav-btn">›</div></div>
+    <!-- 工具箱: 展开"分组 / 会话 / 常用语"快捷面板 (工作台底部那三个入口在侧栏里的合并版, 逻辑见 sidepanel.js).
+         右侧【悬浮】按钮而非输入条里的图标 —— 输入条只在群问模式显示, 挂在里面的话单聊模式就够不着了. -->
+    <div id="qwToolboxBtn" class="qw-toolbox-fab" role="button" aria-haspopup="dialog" aria-expanded="false" data-i18n-attr="title:sidepanel.toolbox" title="工具箱">
+      <!-- 工具箱: 箱体 + 顶部提手 + 中缝与锁扣 -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M4 8h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2Z"/>
+        <path d="M9 8V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>
+        <path d="M2 13h20"/>
+        <path d="M10 13v2h4v-2"/>
+      </svg>
+    </div>
+    <div id="qwSidebarLoading" class="qw-loading" data-i18n="sidepanel.loading">正在加载…</div>
+    <div id="qwSidebarEmpty" class="qw-empty" data-i18n="sidepanel.empty">请先在工作台设置里开启至少一个站点。</div>
+  </div>
+
+  <!-- 底部: 附件预览条 + 一次发给所有 AI. 单聊模式整块隐藏, 故 qw-hidden 挂在外层 wrap 上. -->
+  <div id="qwComposerWrap" class="qw-composer-wrap">
+  <!-- 附件缩略图 (由 shared 的 attachments.js 渲染填充, 空时 CSS 自动塌缩) -->
+  <div id="qwAttachPreview"></div>
+  <input type="file" id="qwAttachInput" multiple style="display: none;" accept="*/*">
+  <div class="qw-composer">
+    <!-- "+": 所有 AI 新建会话 -->
+    <div id="qwNewSessionAll" class="qw-composer-add" role="button" data-i18n-attr="title:sidepanel.newSessionAll" title="所有 AI 新建会话">
+      <!-- 加粗的 + (stroke-width 3): 比顶栏单个 + (当前 AI, 2) 粗一档, 表意"所有 AI 新建会话" -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 5v14M5 12h14"/>
+      </svg>
+    </div>
+    <textarea id="qwComposer" class="qw-composer-input" rows="1" placeholder="Ctrl+Enter 发送给所有AI"></textarea>
+    <!-- 附件: 上传图片/文件, 也可直接往输入框粘贴或往底部区域拖 (逻辑见 shared/src/js/ui/attachments.js) -->
+    <div id="qwAttachBtn" class="qw-composer-add" role="button" data-i18n-attr="title:footer.attach.title;aria-label:footer.attach.aria" title="上传图片/文件（支持粘贴）" aria-label="上传附件">
+      <!-- 回形针 (同工作台 #attachBtn) -->
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+      </svg>
+    </div>
+    <button id="qwSendAll" class="qw-send-all" data-i18n="sidepanel.sendAll" data-i18n-attr="title:sidepanel.sendAllTitle">发送到全部</button>
+  </div>
+  </div>
+
+  <!-- 工具箱弹层: 顶部三分段切子页, 下方列表由 sidepanel.js 按子页渲染 -->
+  <div id="qwToolsPop" class="qw-tools-pop" role="dialog" data-i18n-attr="aria-label:sidepanel.toolbox">
+    <div class="qw-tools-seg">
+      <button type="button" class="qw-tools-seg-btn qw-on" data-tools-tab="groups" data-i18n="groups.subGroups">分组</button>
+      <button type="button" class="qw-tools-seg-btn" data-tools-tab="sessions" data-i18n="groups.subSessions">会话</button>
+      <button type="button" class="qw-tools-seg-btn" data-tools-tab="presets" data-i18n="presets.title">常用语</button>
+      <button type="button" class="qw-tools-seg-btn" data-tools-tab="history" data-i18n="history.tab">历史</button>
+    </div>
+    <div id="qwToolsBody" class="qw-tools-body"></div>
+  </div>
+
+  <!-- 结果反馈 (保存分组/会话、切换分组、恢复会话) -->
+  <div id="qwToast" class="qw-toast" role="status"></div>
+
+  <!-- 站点下拉打开时的透明背板 (点空白处/iframe 上关闭下拉) -->
+  <div id="qwMenuBackdrop" class="qw-menu-backdrop"></div>
+
+  <!-- 共享模块: 顺序同工作台 (configs-loader 装 rawUrls, i18n 翻译, state 提供 QwState, branding 提供站点图标) -->
+  <!-- prompt-presets 只借它的存储 API (QwPresets.list/add/save/expand, 与工作台同一份 localStorage);
+       本页没有 #globalInput/#presetsBtn, 它的弹层部分会自动跳过 —— 详见该文件头注释. -->
+  <script src="../../../shared/src/js/configs-loader.js"></script>
+  <script src="../../../shared/src/js/ui/i18n.js"></script>
+  <script src="../../../shared/src/js/ui/state.js"></script>
+  <script src="../../../shared/src/js/ui/branding.js"></script>
+  <!-- 附件: 本页没有工作台那组 id, 加载时的自动挂载会静默失败, 由 sidepanel.js 调 mount() 传侧栏的 id -->
+  <script src="../../../shared/src/js/ui/attachments.js"></script>
+  <!-- fab-drag: 悬浮按钮的拖动 + 右缘吸附. 本页没有工作台的 .fab-container, 它的自接管会空转,
+       只借 QwFabDrag.attach() 给工具箱按钮用 (见 sidepanel.js) -->
+  <script src="../../../shared/src/js/ui/fab-drag.js"></script>
+  <script src="../../../shared/src/js/ui/prompt-presets.js"></script>
+  <!-- history 同理: 本页没有 #history-panel 那组 id, 它的面板 UI 会自动跳过, 只借存储 API
+       (QwHistory.save/list/remove, 与工作台同一份 chat_history) -->
+  <script src="../../../shared/src/js/ui/history.js"></script>
+  <script src="../js/sidepanel.js"></script>
+</body>
+</html>

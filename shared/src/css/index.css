@@ -1,0 +1,4315 @@
+/* --- 0. 设计变量 (对齐移动端 Kuikly theme/Color.kt) --- */
+:root {
+  --qw-brand: #5566F5;          /* BrandBlue: 主强调色 */
+  --qw-brand-indigo: #4F6BED;   /* 品牌渐变起点 */
+  --qw-brand-violet: #8B5CF6;   /* 品牌渐变终点 */
+  --qw-bg: #F3F4FB;             /* AppBackground: 页面淡紫底 */
+  --qw-card: #FFFFFF;           /* SurfaceCard: 卡片底 */
+  --qw-muted: #EEF0F8;          /* SurfaceMuted: 未选中/次级底 */
+  --qw-text: #1B1B2F;           /* TextPrimary */
+  --qw-text-2: #8A8AA6;         /* TextSecondary */
+  --qw-hairline: #ECEDF5;       /* 细分割线 */
+  --qw-track-off: #E2E3EF;      /* 开关未选 track */
+  --qw-danger: #FF5A6A;
+  --qw-success: #11B884;
+  --qw-brand-gradient: linear-gradient(135deg, var(--qw-brand-indigo), var(--qw-brand-violet));
+  --qw-brand-tint: rgba(85, 102, 245, 0.10);   /* 选中态浅底 */
+  --qw-brand-ring: rgba(85, 102, 245, 0.22);   /* 焦点光圈 */
+  --qw-frame-border: #E2E4F2;                  /* frame 卡片边框 */
+  --qw-frame-toolbar: #F6F7FB;                 /* frame 顶部功能栏底色: 比 card 略灰一点点, 偏白 */
+  --qw-drag-handle: #C4C6DA;                   /* 拖拽把手 (移动端 ManageDragHandle) */
+  --qw-drag-shadow: 0 12px 30px rgba(27, 27, 47, 0.20);   /* "拿起来"的抬升投影 (拖动排序中的面板) */
+  --qw-glass: rgba(255, 255, 255, 0.94);       /* 侧栏半透明底 */
+  --qw-composer-h: 96px;                        /* 常驻底栏占用高度 (grid/fab 让位用) */
+  color-scheme: light;                          /* 原生控件 (滚动条/checkbox/select) 跟随 */
+}
+
+/* --- 1. 基础布局 --- */
+body,
+html {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  width: 100%;
+  overflow-x: hidden;
+  background: var(--qw-bg);
+  font-family: -apple-system, 'Segoe UI', 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  color: var(--qw-text);
+}
+
+/* --- 1.1 站点图标 (branding.js 生成) --- */
+.qw-ai-icon {
+  display: inline-block;
+  flex-shrink: 0;
+  vertical-align: middle;
+  user-select: none;
+}
+
+/* 无图标站点的字母头像: 强调色圆角方块 + 首字符 (同移动端 AiAvatar) */
+.qw-ai-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* 深色条 (frame URL 栏) 上的图标垫白底, 避免深色 logo 看不见 */
+.qw-ai-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+#grid-container {
+  display: grid;
+  min-height: calc(100vh - var(--qw-composer-h));
+  height: auto;
+  width: 100%;
+  row-gap: 5px;
+  column-gap: var(--frame-gap, 5px);
+  padding: 5px var(--frame-gap, 5px);
+  padding-bottom: calc(5px + var(--qw-composer-h));
+  box-sizing: border-box;
+  grid-auto-rows: calc(100vh - 10px - var(--qw-composer-h));
+  grid-template-columns: repeat(3, 1fr);
+}
+
+/* --- 1.2 站点单行排列 (设置→站点排列方式 = 单行; 逻辑见 shared/src/js/ui/pager.js) --- */
+/* 所有站点排成一行、一屏只看得到"每行最多列数"个: 网格改成【单行横向轨道】(grid-auto-flow:column + 一行 1fr),
+   每列宽度由 pager.js 实测算出写进 --qw-page-col-w —— 与 wrap 模式下 repeat(cols,1fr) 完全等宽,
+   故切换排列方式/左右滚动都不会改变任何 frame 的尺寸(webview guest 不用重新布局).
+   overflow:hidden: 屏外的 frame 只是被裁掉(仍在布局里, 一键发送/注入/时间线照常), 用户也拖不出半屏中间态,
+   左右切换由 pager.js 程序化 scrollTo 完成(overflow:hidden 不妨碍程序化滚动). */
+body.qw-paged #grid-container {
+  height: calc(100vh - var(--qw-composer-h));
+  min-height: 0;
+  overflow: hidden;
+  /* 必须是 auto: 站点 frame 自动聚焦输入框时浏览器会"把焦点滚进视图", 一旦它走平滑动画(跑在合成器线程),
+     pager.js 那个每帧写回 scrollLeft 的守卫就打不断它 → 又变成肉眼可见的左右弹动.
+     (同 index.html / chrome 端对 html·body 强制 scroll-behavior:auto 的理由, 见 pager.js 文末守卫.) */
+  scroll-behavior: auto;
+  grid-auto-flow: column;
+  grid-template-columns: none;                        /* 盖掉 #grid-container 的 repeat(3,1fr) */
+  grid-template-rows: 1fr;                            /* 单行, 撑满容器高度 */
+  grid-auto-columns: var(--qw-page-col-w, 33vw);
+}
+
+/* 界面左右边缘的左右切换箭头. 平时【只露一个箭头】(无底色/无边框/半透明), 鼠标移上去才浮出按钮底面 ——
+   常驻的实心按钮会明显遮住站点内容. z-index 低于最大化面板(99999) → 某面板全屏时自然被盖住, 无需额外隐藏.
+   left 由 pager.js 按左侧索引栏当前宽度实时设(躲开侧栏); right 在时间线开着时让出它的 gutter. */
+.qw-pager-btn {
+  position: fixed;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 30px;
+  height: 60px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--qw-text-2);
+  border: 1px solid transparent;
+  border-radius: 12px;
+  box-shadow: none;
+  opacity: 0.4;                 /* 箭头本身淡淡的, 认得出是可点的但不抢视线 */
+  cursor: pointer;
+  user-select: none;
+  z-index: 9000;
+  transition: color 0.15s ease, background 0.15s ease, opacity 0.15s ease,
+              border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+body.qw-paged .qw-pager-btn {
+  display: flex;
+}
+
+.qw-pager-next {
+  right: 10px;
+}
+
+body.qw-tl-active .qw-pager-next {
+  right: 22px;                                        /* 让开右缘时间线细条 */
+}
+
+/* hover 才浮出按钮底面(玻璃底 + 描边 + 投影), 与侧栏/FAB 同一套观感 */
+.qw-pager-btn:hover {
+  opacity: 1;
+  background: var(--qw-glass);
+  border-color: var(--qw-hairline);
+  box-shadow: 0 4px 14px rgba(27, 27, 47, 0.12);
+  color: var(--qw-brand);
+}
+
+.qw-pager-btn.disabled {
+  opacity: 0.15;
+  cursor: default;
+  pointer-events: none;                               /* 首/末档: 更淡且点不动(连带 hover 底面也不会出现) */
+}
+
+/* 只有一档(站点数 ≤ 每屏列数)时整套左右切换 UI 都不出现 */
+body.qw-paged .qw-pager-btn.qw-pager-hidden,
+body.qw-paged .qw-pager-dots.qw-pager-hidden {
+  display: none;
+}
+
+/* 底部居中的档位小圆点: 兼当指示器与快速跳转. bottom 落在输入面板(bottom:40px)下方的空隙里.
+   同箭头的思路——平时只有几个小圆点浮在那儿, 底面(玻璃底/描边/投影)留到 hover 时才出现, 尽量不压站点内容. */
+.qw-pager-dots {
+  position: fixed;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: none;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  box-shadow: none;
+  z-index: 9000;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qw-pager-dots:hover {
+  background: var(--qw-glass);
+  border-color: var(--qw-hairline);
+  box-shadow: 0 4px 14px rgba(27, 27, 47, 0.10);
+}
+
+body.qw-paged .qw-pager-dots {
+  display: flex;
+}
+
+.qw-pager-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--qw-track-off);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.qw-pager-dot:hover {
+  background: var(--qw-text-2);
+}
+
+.qw-pager-dot.active {
+  background: var(--qw-brand);
+  transform: scale(1.25);
+}
+
+/* 档位太多(步长 1 + 站点多)时圆点排不下, pager.js 把这一坨换成 "3 / 23" 文字.
+   文字压在站点内容上会看不清, 故这一形态保留常驻底面(不像圆点那样等 hover). */
+.qw-pager-dots.qw-pager-dots-text {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--qw-text-2);
+  padding: 5px 12px;
+  background: var(--qw-glass);
+  border-color: var(--qw-hairline);
+  box-shadow: 0 4px 14px rgba(27, 27, 47, 0.10);
+}
+
+.frame-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;        /* 顶部常驻工具栏(.frame-toolbar) + 下方 iframe/webview 占满剩余高度 */
+  background: var(--qw-card);
+  border: 1px solid var(--qw-frame-border);
+  border-radius: 12px;
+  overflow: hidden;
+  /* 时间线高亮 / 拖动抬起态进出都过渡一下, 免得闪.
+     ⚠️ 【不要往这里加 transform】: 拖动换位的位移过渡是 frame-drag.js 逐次内联接管的(FLIP, 每段都要先
+     transition:none 反向定位再放行), 这条 CSS 规则会在它清掉内联 transition 后接管, 让"清理"本身也变成
+     一段动画 —— 面板会在收尾时莫名再飘一下. */
+  transition: border-color 0.12s ease, box-shadow 0.18s ease, opacity 0.16s ease;
+}
+
+/* hover 统一时间线的圆点时, 给【点下去真会滚的那几个面板】描一圈(见 timeline-panel.js highlightTargets):
+   气泡的名单回答"是哪几个站", 这圈边框回答"在屏幕的哪几格" —— 用户不用去数第几个面板.
+   只换 border-color + 加外发光, 【不动 border-width/padding】→ 零布局抖动(改宽度会让整格内容跳一下);
+   发光复用现成的 --qw-brand-ring(焦点光圈), 日/夜主题自洽. 不用 inset 阴影/负 offset 描边: 那样会被
+   铺满容器的 webview/iframe 盖住看不见. */
+.frame-wrapper.qw-tl-hl,
+.frame-wrapper.qw-quote-hl {   /* 悬停引用卡片时描出来源那一格(quotes.js), 同一套视觉 */
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 2px var(--qw-brand-ring);
+}
+
+/* Ctrl+Alt+方向键选中的站点(见 site-focus.js): 选中后用户直接用原生 ↑/↓ 滚这个站点的内容, 边框高亮是
+   "键盘现在打到哪儿"的视觉提示 —— 焦点已经进了 webview/iframe 内部, 浏览器默认的焦点环画不出来。
+   ⚠️ 这是【一次性提示】不是常驻状态: 亮约 3 秒后由 site-focus.js 摘掉 class 淡出, 但【选中关系仍然成立】
+   (焦点还在那个站点里, 直到用户按 Ctrl+I 收回输入框)。改这里的语义前先看 site-focus.js 的 paint()。
+   比时间线高亮(上一条)重一档, 好在一屏站点里一眼认出来。同样只用 border-color + 外扩 box-shadow ——
+   铺满容器的 webview/iframe 会盖住 inset 阴影和负 offset 描边(理由同上一条)。
+   过渡复用 .frame-wrapper 已有的 border-color/box-shadow。 */
+.frame-wrapper.qw-site-focused {
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 3px var(--qw-brand-ring), 0 0 0 1px var(--qw-brand);
+}
+
+/* 菜单打开时把当前面板提到相邻面板之上；二级菜单才能像桌面菜单一样跨格浮出。 */
+.frame-wrapper.frame-menu-open {
+  z-index: 20;
+}
+
+/* 每个 frame 顶部的常驻功能栏: 不再 hover 悬浮遮住站点内容, 而是独占一行把站点往下顶.
+   横向 flex: URL 条(左, flex:1) + 一排按钮(右). 配色全走主题变量(随日/夜切换), 取比卡片底
+   略深一档的 --qw-muted + 底部 --qw-frame-border 细线, 与 frame 边框/卡片自洽、色差很小.
+   子按钮/URL条都改成 flex 子项(见下方各 .frame-*-btn / .frame-url-bar), 下拉菜单仍是绝对定位. */
+.frame-toolbar {
+  position: relative;
+  flex: 0 0 30px;
+  height: 30px;
+  display: flex;
+  align-items: stretch;
+  background: var(--qw-frame-toolbar);
+  border-bottom: 1px solid var(--qw-frame-border);
+  z-index: 5;
+  cursor: grab;                  /* 整条功能栏(按钮以外的部分)是排序把手, 见 frame-drag.js */
+  user-select: none;             /* 它是把手: 拖它不能起原生选区(否则选区罩住相邻面板且点不掉, 同 .sidebar-index 的注释) */
+  touch-action: none;            /* 同 .fab-container: 触屏上不设这个, 手势会先被判成页面滚动, 浏览器直接派 pointercancel, 拖动根本起不来 */
+}
+
+/* 通用设置关闭“显示顶部工具栏”后隐藏整行；frame 仍是纵向 flex，站点内容会自动占满释放出的 30px。 */
+body.qw-hide-top-toolbar .frame-toolbar {
+  display: none;
+}
+
+/* --- 拖功能栏调整站点顺序 (frame-drag.js) --- */
+/* 被拖的面板"拿在手上"的样子: 微微缩小(transform 由 JS 给, 见 frame-drag.js LIFT_SCALE) + 抬升投影 +
+   品牌色描边 + 略微透出身后 —— 缩小和投影一起才有"离开桌面"的层次感, 单靠变淡只像是被禁用了.
+   z-index 抬到 frame 工具栏(5)之上: 否则这圈投影会被相邻面板的实心卡片盖掉一半, 看着像缺了一角. */
+.frame-wrapper.qw-frame-dragging {
+  /* 只透一点点: 拿起后面板是【贴着指针走】的, 会大面积压在邻居身上 —— 透得多了两层内容叠在一起糊成一片,
+     反而看不清自己拿的是哪块. 悬浮感交给投影和缩放, 透明度只负责"它离开桌面了"这一点点暗示. */
+  opacity: 0.92;
+  border-color: var(--qw-brand);
+  box-shadow: var(--qw-drag-shadow), 0 0 0 2px var(--qw-brand-ring);
+}
+
+/* 抬层单独一个 class, 比 .qw-frame-dragging 多活一段: 松手瞬间就掉回 auto 的话, 相邻面板会立刻盖上来
+   把正在淡出的那圈投影裁掉一块, 落地动画看着像"啪"地缺了个角. 由 frame-drag.js 在落回动画跑完后才摘. */
+.frame-wrapper.qw-frame-settling {
+  z-index: 6;
+}
+
+/* 拖动进行中: 全局抓手光标 + 禁掉选字 (罩层已接管指针, 这里只管观感) */
+body.qw-frame-drag-on,
+body.qw-frame-drag-on .frame-toolbar {
+  cursor: grabbing;
+}
+
+body.qw-frame-drag-on {
+  user-select: none;
+}
+
+/* 全屏按钮样式 (工具栏 flex 子项) */
+.frame-max-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--qw-text-2);
+  background: transparent;
+  border-left: 1px solid var(--qw-hairline);
+  cursor: pointer;
+  user-select: none;
+}
+
+.frame-max-btn:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+}
+
+/* 新建会话按钮样式 (位于刷新与全屏之间, 风格与左右两侧按钮一致) */
+.frame-new-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 20px;
+  color: var(--qw-text-2);
+  background: transparent;
+  border-left: 1px solid var(--qw-hairline);
+  cursor: pointer;
+  user-select: none;
+}
+
+.frame-new-btn:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+}
+
+/* 移除页面按钮 (工具栏最右; 破坏性操作, hover 用危险红提示) */
+.frame-remove-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  line-height: 30px;
+  text-align: center;
+  font-size: 20px;
+  color: var(--qw-text-2);
+  background: transparent;
+  border-left: 1px solid var(--qw-hairline);
+  cursor: pointer;
+  user-select: none;
+}
+
+.frame-remove-btn:hover {
+  background: var(--qw-danger);
+  color: #fff;
+}
+
+.frame-more-btn {
+  flex: 0 0 30px;
+  height: 30px;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--qw-hairline);
+  color: var(--qw-text-2);
+  background: transparent;
+  font-size: 22px;
+  line-height: 30px;
+  cursor: pointer;
+}
+.frame-more-btn:hover, .frame-more-btn[aria-expanded="true"] {
+  color: var(--qw-brand);
+  background: var(--qw-brand-tint);
+}
+.frame-menu {
+  display: none;
+  position: absolute;
+  top: 32px;
+  right: 4px;
+  width: max-content;
+  min-width: 190px;
+  max-width: calc(100% - 8px);
+  padding: 4px;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-frame-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px #0002;
+  cursor: default;
+}
+.frame-menu.show { display: block; }
+.frame-menu button {
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  font-family: inherit;
+  text-align: left;
+  white-space: normal;
+}
+.frame-menu button:disabled { opacity: .5; cursor: wait; }
+.frame-more-btn:focus-visible, .frame-menu button:focus-visible {
+  outline: 2px solid var(--qw-brand);
+  outline-offset: -2px;
+}
+
+.menu-item {
+  min-height: 36px;
+  padding: 8px 10px;
+  color: var(--qw-text);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  transition: background 0.2s, color 0.2s;
+  white-space: nowrap;
+}
+
+.menu-item:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+}
+
+.frame-menu-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.frame-menu-icon svg,
+.frame-menu-chevron svg {
+  width: 16px;
+  height: 16px;
+  display: block;
+}
+
+.frame-menu-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: normal;
+}
+
+.frame-menu-chevron {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  margin-left: auto;
+  transition: transform 0.15s ease;
+}
+
+.frame-export-btn[aria-expanded="true"] {
+  color: var(--qw-brand);
+  background: var(--qw-brand-tint);
+}
+
+.frame-export-btn.submenu-left .frame-menu-chevron {
+  transform: rotate(180deg);
+}
+
+/* 导出格式是 Windows 风格的侧向二级菜单。fixed 让它不受 frame-wrapper 的圆角裁剪；
+   JS 按视口空间选择左/右方向，并让上下边缘始终留在屏幕内。 */
+.frame-submenu {
+  display: none;
+  position: fixed;
+  z-index: 1000;
+  width: max-content;
+  min-width: 210px;
+  max-width: calc(100vw - 8px);
+  margin: 0;
+  padding: 4px;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-frame-border);
+  border-radius: 8px;
+  box-shadow: 0 6px 20px #0002;
+  cursor: default;
+}
+
+.frame-submenu.show { display: block; }
+
+/* 跨过主菜单与浮层之间的 3px 间距时仍保持 hover，避免子菜单闪关。 */
+.frame-submenu::before {
+  content: '';
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 5px;
+}
+
+.frame-submenu.opens-left::before { right: -5px; }
+.frame-submenu.opens-right::before { left: -5px; }
+
+.frame-submenu-item {
+  min-height: 34px;
+  padding: 7px 12px;
+  font-size: 13px;
+}
+
+.frame-menu .frame-tts-btn.speaking {
+  color: #fff;
+  background: var(--qw-brand);
+}
+
+/* 输入框右键弹出的粘贴菜单 (Electron 默认无右键菜单, 这里手撸一个; Chrome 端也覆盖原生菜单保持一致) */
+.qw-context-menu {
+  position: fixed;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  overflow: hidden;
+  z-index: 10000;
+  min-width: 100px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  user-select: none;
+}
+
+.qw-context-item {
+  padding: 8px 14px;
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+.qw-context-item:hover {
+  background: var(--qw-brand);
+}
+
+.qw-context-item.disabled {
+  color: rgba(255, 255, 255, 0.35);
+  cursor: default;
+}
+
+.qw-context-item.disabled:hover {
+  background: transparent;
+}
+
+.qw-context-item i {
+  font-style: normal;
+  font-size: 14px;
+  width: 16px;
+  text-align: center;
+}
+
+/* 刷新按钮样式 (工具栏中紧挨 URL 条的第一个按钮) */
+.frame-refresh-btn {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--qw-text-2);
+  background: transparent;
+  border-left: 1px solid var(--qw-hairline);
+  cursor: pointer;
+  user-select: none;
+}
+.frame-refresh-btn svg { width: 16px; height: 16px; display: block; }
+
+.frame-refresh-btn:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+}
+
+/* 全屏状态样式 */
+.frame-wrapper.maximized {
+  position: fixed !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  z-index: 99999 !important;
+  border: none !important;
+  background: var(--qw-card);
+}
+
+/* URL 显示条: 工具栏左侧、占据按钮以外的全部空间 (flex:1). 站点图标 + URL 文本 + 复制按钮.
+   order:-1 让它排到所有按钮左侧 (frame-controls.js 里它是最后 append 进工具栏的). */
+.frame-url-bar {
+  order: -1;
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 30px;
+  padding: 0 0 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.frame-url-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  color: var(--qw-text-2);
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: inherit;   /* URL 条也是排序把手的一部分, 光标跟着功能栏走 (grab / 拖动中 grabbing) */
+}
+
+.frame-copy-btn {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--qw-text-2);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  user-select: none;
+  flex-shrink: 0;
+  border-radius: 6px;
+}
+.frame-copy-btn svg { width: 16px; height: 16px; display: block; }
+.frame-copy-btn.copied { color: #16a34a; }   /* 复制成功: 图标转绿 1.2s */
+
+.frame-copy-btn:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+}
+
+iframe, webview {
+  width: 100%;
+  height: 100%;
+  border: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+/* iframe 默认是 inline 替换元素, 改 block 避免基线空隙. */
+iframe { display: block; }
+
+/* webview 默认 display: inline-flex; height: 200px.
+   - inline-flex 会让外层缩成 200px (height:100% 不工作), 看起来 webview 只显示半截
+   - 但 webview 的 shadow DOM 里有个 <iframe style="flex: 1 1 auto"> 依赖父容器是 flex
+   所以这里必须用 `flex`: 既保证外层撑满 (block 级别), 又保留 flex 容器特性让内部 iframe 能 flex. */
+webview { display: flex; }
+
+iframe.iframe-visible, webview.iframe-visible {
+  opacity: 1;
+}
+
+/* frame 容器是纵向 flex: 顶部 .frame-toolbar 固定 30px, iframe/webview 占满剩余高度.
+   覆盖上面的 height:100% (在 flex 列里会比容器高 30px 而溢出/被裁). */
+.frame-wrapper > iframe,
+.frame-wrapper > webview {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 0;
+}
+
+/* --- 2. 右下角悬浮按钮组 --- */
+.fab-container {
+  position: fixed;
+  bottom: calc(var(--qw-composer-h) + 16px);
+  right: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;                        /* 注: 折叠组(.fab-collapsible)有 14px 底部 padding 当阴影缓冲, 故这里 1px + 14px = 视觉 15px 间距. 组内按钮间距由其自身 gap:15px 控制. */
+  z-index: 10000;
+  user-select: none;               /* 拖动时别选中/拖出内容 */
+  touch-action: none;              /* 触屏拖动不被页面滚动抢走 (逻辑见 fab-drag.js) */
+}
+
+/* 拖动 + 右缘吸附 (fab-drag.js): 抓住整组拖到任意位置, 松手后横向弹回右缘、纵向停在放手处.
+   位移仍写在 right/bottom 上而非 left/top —— 保持"手风琴朝输入按钮塌缩"的布局不变. */
+.fab-container.fab-snapping {
+  transition: right 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* 拖动中: 整段拖拽里鼠标一直是按下的, 不掐掉按钮的 hover 放大 / :active 回缩就会一路缩着走 */
+.fab-container.fab-dragging .fab-btn:hover,
+.fab-container.fab-dragging .fab-btn:active {
+  transform: none;
+}
+
+.fab-container.fab-dragging,
+.fab-container.fab-dragging .fab-btn {
+  cursor: grabbing;
+}
+
+/* 拖动时的全屏透明罩: 站点面板是 webview(PC)/跨域 iframe(插件), 指针划进去宿主页就收不到
+   pointermove, 拖拽半路卡死. z-index 只需高过 frame(5)、低于 fab 自身(10000).
+   三处共用同一张罩: fab 拖动(fab-drag.js)、左侧栏拖动(sidebar-drag.js)、面板功能栏拖动排序(frame-drag.js). */
+.fab-drag-shield,
+.qw-sb-drag-shield,
+.qw-frame-drag-shield {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  background: transparent;
+}
+
+/* fab / 侧栏的罩都只在真拖动时才铺, 直接给抓手光标; 功能栏那张是 pointerdown 就铺的(见 frame-drag.js armShield),
+   所以它自己不设光标 —— 真拖起来时由 body.qw-frame-drag-on 统一变 grabbing, 单纯按一下不会闪光标. */
+.fab-drag-shield,
+.qw-sb-drag-shield {
+  cursor: grabbing;
+}
+
+/* 修饰键(Ctrl+Alt)按住时预铺的那张罩: 给"可以抓了"的手型, 让用户看得出此刻按下去是排序而不是点站点内容.
+   真拖起来后换成 grabbing —— 必须【显式】写这条: body.qw-frame-drag-on 那句设的是 body 自己的光标,
+   而罩层有自己的 cursor, 元素自身的值优先于从 body 继承的, 光靠那句盖不住. */
+.qw-frame-drag-shield-armed {
+  cursor: grab;
+}
+
+body.qw-frame-drag-on .qw-frame-drag-shield-armed {
+  cursor: grabbing;
+}
+
+/* 可折叠组: 包住 主题/设置/历史 三个按钮, 整体收起/展开 (max-height 手风琴 + 透明度 + 位移).
+   transform-origin: bottom center 让其朝输入按钮(下方)塌缩.
+   阴影不被裁的关键: 四周 14px padding 当"阴影缓冲区" —— overflow:hidden 裁的是 padding 外缘,
+   每个按钮的 box-shadow(最大向下 ~12px)落在 padding 内, 不会被裁成方块; 而手风琴收拢时按钮
+   滑出被裁仍正常(那正是想要的滑动感). 水平 -14 margin 抵消左右 padding 让列宽不变(阴影区溢出
+   列外, 因 .fab-container overflow:visible 仍可见); 底部 padding 占掉的纵向间距由下面把
+   .fab-container 的 gap 从 15→1 让出, 整体视觉间距与位置完全不变. box-sizing:border-box 让
+   max-height 含 padding, 收起(max-height:0)时彻底塌缩不留 padding 残块. */
+.fab-collapsible {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: 14px;
+  margin: 0 -14px;
+  max-height: 180px;               /* 主题+历史 2 按钮×50 + 间距15 + padding28; 总结已迁到底栏 */
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  transform-origin: bottom center;
+  /* 包裹层本身不吃指针: 左右各 14px 透明 padding 带会挡住后面的 webview, 设 none 让点击穿透;
+     按钮本体下面单独设 auto. pointer-events 可继承, 故折叠态(无下面的 :not 覆盖)按钮自动随之不可点. */
+  pointer-events: none;
+  transition: max-height 0.34s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.26s ease,
+              transform 0.34s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 仅展开态按钮可点(hover/点击正常); 折叠态隐形按钮继承 none, 不会被误点 */
+.fab-container:not(.fab-collapsed) .fab-collapsible .fab-btn {
+  pointer-events: auto;
+}
+
+.fab-container.fab-collapsed .fab-collapsible {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(16px) scale(0.6);
+}
+
+/* 透明悬停感应区: 铺在"历史与输入之间"的 15px 间隙里, hover 到它也浮现箭头.
+   只占间隙、不与按钮重叠(故不挡点击); z-index 低于箭头, 箭头可见时点击仍命中箭头. */
+.fab-arrow-hotzone {
+  position: absolute;
+  right: 0;
+  width: 50px;                     /* 对齐 50px 宽的 FAB 列 */
+  bottom: 50px;                    /* 输入按钮上沿 */
+  height: 15px;                    /* 与上方组之间的间隙高度一致, 上接历史/下接输入, hover 连续无死区 */
+  z-index: 0;
+}
+
+/* 输入按钮上方的小箭头: 半透明, 默认隐藏, hover 输入按钮/间隙/箭头时浮现.
+   绝对定位 => 浮现时不挤占按钮间距. 紧贴输入按钮上沿, 与输入按钮共享边界以保证 hover 连续. */
+.fab-collapse-arrow {
+  position: absolute;
+  right: 13px;                     /* 在 50px 宽的 FAB 列上水平居中 ((50-24)/2≈13) */
+  bottom: 50px;                    /* 输入按钮高 50px, 紧贴其上沿 */
+  width: 24px;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 7px;
+  background: rgba(0, 0, 0, 0.22);
+  color: #fff;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  z-index: 1;
+}
+
+.fab-collapse-arrow.visible {
+  opacity: 0.75;
+  pointer-events: auto;
+}
+
+.fab-collapse-arrow.visible:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* 箭头朝向: 默认(展开态)朝下 = 点击收起; 收起态旋转 180° 朝上 = 点击展开. */
+.fab-collapse-arrow svg {
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+.fab-container.fab-collapsed .fab-collapse-arrow svg {
+  transform: rotate(180deg);
+}
+
+/* --- 2.1 左侧索引栏 (新增) --- */
+/* 整条侧栏都不可选中: 里面全是按钮(站点项 / 切换分组 / 切换会话 / 设置)与那个折叠箭头, 没有需要复制的正文.
+   ⚠️ 必须放在【容器】上而不是逐个子项: 折叠箭头 .sidebar-toggle 里的 ‹/› 是个货真价实的文本节点, 从它按下
+   往外拖就会起一段跨整页的原生选区 —— 而 #grid-container 排在侧栏【之前】(见 index.html), 选区一路罩过所有
+   面板, webview/iframe 元素整块被涂成选中色(全蓝); 更麻烦的是随后点面板【清不掉】它: 点击落在子文档里,
+   宿主页的选区不会被折叠, 只会从蓝变灰(失焦色)赖在那儿. 兜底清理见 menu-close.js. */
+.sidebar-index {
+  position: fixed;
+  top: 50%;
+  left: 0;
+  /* 纵向居中(-50%) + 折叠(-100%) + 停放位置(--qw-sb-dx/dy) 全都【叠在同一个 transform 里】.
+     停放位置不另开 top/left: 那样要和这两个 transform 互相打补丁, 而且 sidebar.js 每次 render 都会
+     `style.transform = ''`, 写内联 transform 会被当场抹掉 —— 自定义属性则不会 (见 sidebar-drag.js).
+     ⚠️ 这两个值【只在"展开态整栏拖动"时跟着手走】; 收起态拖动时它们纹丝不动, 动的是箭头自己的
+     --qw-sb-adx/ady —— 视觉上就成了"只拖了箭头". 两种模式在 beginDrag 时按折叠态二选一. */
+  --qw-sb-dx: 0px;
+  --qw-sb-dy: 0px;
+  transform: translate(var(--qw-sb-dx), calc(-50% + var(--qw-sb-dy)));
+  display: flex;
+  flex-direction: column;
+  user-select: none;
+  z-index: 9000;
+  /* 容器本身不设 overflow，允许按钮溢出显示 */
+  background: transparent;
+  /* 这条过渡三用: 折叠/展开的滑动、松手后吸回左缘、松手后列表滑到新高度 */
+  transition: transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  /* 移除 padding 等样式，移到 content */
+}
+
+/* 拖动中必须关掉过渡 —— 两种模式都关: 整栏拖动时是容器在跟手, 只拖箭头时是箭头在跟手,
+   哪个带着 0.3s 缓动都会明显落后指针. 另一个那会儿本来不动, 顺手关掉也没副作用. */
+.sidebar-index.qw-sb-dragging,
+.sidebar-index.qw-sb-dragging .sidebar-toggle {
+  transition: none !important;
+}
+
+/* 只在【收起态·只拖箭头】那种模式下给箭头压一层更重的投影, 表示"它暂时离开了列表".
+   展开态是整栏跟着走, 箭头没有离队, 就不该单独高亮它. */
+.sidebar-index.qw-sb-drag-arrow .sidebar-toggle {
+  box-shadow: 4px 0 14px rgba(27, 27, 47, 0.28);
+  border-color: var(--qw-brand);
+  color: var(--qw-text);
+}
+
+.sidebar-content {
+  background: var(--qw-glass);
+  padding: 15px 10px;
+  border-top-right-radius: 16px;
+  border-bottom-right-radius: 16px;
+  box-shadow: 2px 0 12px rgba(27, 27, 47, 0.10);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 高度自适应视口: 站点少就多高算多高, 站点多就一路长到"视口减上下各 16px"为止.
+     ⚠️ 必须配 box-sizing:border-box —— 否则 max-height 不含自身 30px 的上下 padding,
+     算出来的边距是假的, 面板会比预期高 30px.
+     旧值是 80vh(且 content-box): 面板永远只占 8 成高, 上下白白各空 10vh —— 站点一多就
+     "列表滚不完、屏幕却空着". 现在改成填满可用高度, 与 sidebar-drag.js 的 EDGE_GAP 呼应:
+     面板长到满高时 clampDy 算出的可拖范围自然收缩到 ±8px, 也就再不可能被拖到顶出屏幕. */
+  box-sizing: border-box;
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 10px;
+}
+
+/* 站点多到一屏放不下时由 sidebar.js 挂上 (见 applyDensity): 收紧行距与内边距, 一屏多放约 1/3 的站点,
+   图标与文字尺寸基本不动 —— 是"更密", 不是旧那种"把内容盒压成 0"的坏掉. 装得下就不加, 保持宽松手感. */
+.sidebar-content.compact {
+  gap: 4px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+}
+
+.sidebar-content.compact .sidebar-item {
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 12.5px;
+}
+
+/* 悬浮玻璃面板上系统默认滚动条太厚太抢眼 (站点一多就常驻), 换成贴边细条 */
+.sidebar-content { scrollbar-width: thin; scrollbar-color: var(--qw-track-off) transparent; }
+.sidebar-content::-webkit-scrollbar { width: 6px; }
+.sidebar-content::-webkit-scrollbar-track { background: transparent; }
+.sidebar-content::-webkit-scrollbar-thumb { background: var(--qw-track-off); border-radius: 3px; }
+.sidebar-content::-webkit-scrollbar-thumb:hover { background: var(--qw-text-2); }
+
+.sidebar-toggle {
+  /* 定位到容器外部右侧 */
+  position: absolute;
+  top: 50%;
+  right: -20px;
+  /* 纵向居中(-50%) + 拖动中相对列表的额外位移(--qw-sb-adx/ady). 拖动时只有这两个变量在动,
+     容器纹丝不动 —— 视觉上就是"只拖了箭头" (见 sidebar-drag.js). */
+  --qw-sb-adx: 0px;
+  --qw-sb-ady: 0px;
+  transform: translate(var(--qw-sb-adx), calc(-50% + var(--qw-sb-ady)));
+  /* 同 .fab-container: 触屏上不设这个, 手势会先被判成页面滚动、浏览器直接派 pointercancel, 拖动起不来.
+     ⚠️ 只能设在【箭头】上, 绝不能设到 .sidebar-index 容器上 —— 里面的 .sidebar-content 是
+     overflow-y:auto 的可滚列表, 设到容器上会连"触屏滚站点列表"一起禁掉. */
+  touch-action: none;
+  width: 20px;
+  height: 40px;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-left: none;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: bold;
+  color: var(--qw-text-2);
+  box-shadow: 4px 0 6px rgba(0, 0, 0, 0.1);
+  z-index: 9002;
+  /* transform 那一项【必须和 .sidebar-index 的完全同时长、同缓动】: 松手收尾时容器的 --qw-sb-dy 加上 d、
+     箭头的 --qw-sb-ady 同时从 d 减回 0, 两段位移逐帧精确抵消 → 箭头停在原地不动, 只有列表滑过来对齐它.
+     时长或缓动对不上, 抵消就不成立, 箭头会在收尾时先飘出去再荡回来.
+     其余项保持原来的 0.2s(hover 换底色/变宽); 不能图省事写 `all`, 那样 transform 也会被卷进 0.2s. */
+  transition: background 0.2s, color 0.2s, width 0.2s, border-color 0.2s, box-shadow 0.2s,
+              transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.sidebar-toggle:hover {
+  background: var(--qw-muted);
+  color: var(--qw-text);
+  width: 24px;
+}
+
+/* 收起状态：容器完全移出屏幕 (停放位置照样叠加进来, 否则一收起就跳回竖直正中) */
+.sidebar-index.collapsed {
+  transform: translate(calc(-100% + var(--qw-sb-dx)), calc(-50% + var(--qw-sb-dy))) !important;
+}
+
+/* 收起状态下，让按钮依然保持在屏幕最左边缘可见 */
+/* 由于父容器移到了 -100%，按钮(right: -20px) 就会正好露在屏幕边缘 (0px 处) */
+
+.sidebar-item {
+  /* ⚠️ 绝不能让它收缩. .sidebar-content 是 max-height 的 column flex, 而本项设了 overflow:hidden
+     —— 按规范这会把它的 automatic minimum size 归 0, 于是默认的 flex-shrink:1 在站点一多时把每项
+     从 34px 一路压到只剩上下 padding 的 16px: 内容盒高 0, 18px 图标溢出成一条、文字看不见.
+     更糟的是 padding 不参与收缩, 压到底照样超出 max-height → "既被压扁、又还要滚动", 两头不讨好.
+     站点多时正确的行为是行高不变、由容器滚动 (再配合下面的 .compact 自动收紧密度). */
+  flex-shrink: 0;
+  width: auto;
+  min-width: 80px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: var(--qw-muted);
+  color: var(--qw-text);
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  cursor: pointer;
+  user-select: none;
+  transition: all 0.2s;
+  position: relative;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidebar-item-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 侧栏 切换分组 / 设置 按钮的 SVG 图标 (与站点图标同尺寸对齐) */
+.sidebar-item-svg {
+  flex-shrink: 0;
+  display: block;
+}
+
+/* 每项右侧的快速删除按钮: 默认隐藏(预留位避免布局跳动), 悬停 item 时淡入, 悬停按钮自身变红.
+   与 .history-delete-btn 同一套交互约定. */
+.sidebar-item-del {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  border-radius: 6px;
+  color: var(--qw-text-2);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.sidebar-item:hover .sidebar-item-del {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.sidebar-item-del:hover {
+  opacity: 1;
+  background: var(--qw-danger);
+  color: #fff;
+}
+
+.sidebar-item:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+  transform: translateX(5px);
+}
+
+.sidebar-item.active {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+  font-weight: bold;
+  border-left: 3px solid var(--qw-brand);
+}
+
+/* 拖拽排序: 被拖中的项 (与 .setting-item.dragging 同风格). 拖动时不要 hover 的位移, 以免抖动. */
+.sidebar-item[data-id] {
+  cursor: grab;
+}
+
+.sidebar-item.dragging {
+  opacity: 0.5;
+  background: var(--qw-brand-tint);
+  border: 2px dashed var(--qw-brand);
+  transform: none;
+}
+
+/* 移除 Tooltip，改为直接显示 */
+.sidebar-item::after {
+  display: none;
+}
+
+.sidebar-settings-btn {
+  background: var(--qw-muted);
+  color: var(--qw-text-2);
+  font-size: 12px;
+}
+
+.sidebar-settings-btn:hover {
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+}
+
+.sidebar-divider {
+  flex-shrink: 0;   /* 同 .sidebar-item: 列表滚动时分隔线也不该被压没 */
+  height: 0;
+  border: none;
+  border-top: 1px solid var(--qw-hairline);
+  margin: 2px 0;
+}
+
+.fab-btn {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  color: white;
+  font-size: 24px;
+  text-align: center;
+  line-height: 50px;
+  cursor: pointer;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  user-select: none;
+  transition: transform 0.2s;
+}
+
+.fab-btn:hover {
+  transform: scale(1.1);
+}
+
+/* 日/夜切换 FAB: 日月 SVG 升降过渡.
+   两枚图标叠放, 状态全由 data-qw-theme 驱动 (CSS transition), 保证设置面板/
+   跟随系统/按钮点击三种来源切换时图标永远同步, 也没有 animationend 不触发的坑.
+   按钮圆形 overflow:hidden 即"地平线": 旧图标带旋转沉下去, 新图标从下方弹起. */
+#themeFab {
+  position: relative;
+  overflow: hidden;
+  background-color: #FF9F43;
+  transition: background-color 0.5s ease, transform 0.2s;
+}
+
+.qw-theme-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  margin: -12px 0 0 -12px;
+  /* transform 带回弹 (overshoot), 升起时有"跳出地平线"的弹性 */
+  transition: transform 0.55s cubic-bezier(0.34, 1.45, 0.5, 1), opacity 0.3s ease;
+}
+
+/* 图标代表"当前模式": 浅色 = 太阳在位, 月亮沉在地平线下 */
+.qw-icon-sun  { transform: translateY(0) rotate(0deg); opacity: 1; }
+.qw-icon-moon { transform: translateY(160%) rotate(120deg); opacity: 0; }
+
+/* 深色: 互换 (太阳向反方向沉下, 旋转方向相反, 形成连贯的"滚落/滚出"感) */
+[data-qw-theme="dark"] .qw-icon-sun  { transform: translateY(160%) rotate(-120deg); opacity: 0; }
+[data-qw-theme="dark"] .qw-icon-moon { transform: translateY(0) rotate(0deg); opacity: 1; }
+
+/* 所有 FAB 按下时轻微回缩, 配合 hover 放大形成按压手感 */
+.fab-btn:active {
+  transform: scale(0.9);
+}
+
+#toggleInputBtn {
+  background: var(--qw-brand-gradient);
+}
+
+/* 品牌渐变：输入 */
+#historyBtn {
+  background-color: #FF9F43;
+}
+
+/* 琥珀（移动端 palette amber）：历史 */
+#settingsBtn {
+  background-color: #17172B;
+}
+
+/* BrandBlack：设置 */
+
+#multiToolFab {
+  background-color: var(--qw-brand);
+}
+
+/* BrandBlue：AI 一键总结(answers.js 动态插入; 白描边图标需要有色底才可见) */
+
+/* 气泡提示 */
+.bubble-tip {
+  position: absolute;
+  right: 65px;
+  bottom: 5px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  font-size: 14px;
+  line-height: 1.5;
+  padding: 12px 16px;
+  border-radius: 12px;
+  border-bottom-right-radius: 4px;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid var(--qw-hairline);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s, transform 0.3s;
+  transform: translateX(10px);
+}
+
+.bubble-link {
+  color: var(--qw-brand);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.bubble-link:hover {
+  text-decoration: underline;
+}
+
+.bubble-tip.show {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+}
+
+.bubble-tip::after {
+  content: '';
+  position: absolute;
+  right: -8px;
+  bottom: 12px;
+  border: 8px solid transparent;
+  border-left-color: var(--qw-card);
+}
+
+.bubble-tip::before {
+  content: '';
+  position: absolute;
+  right: -10px;
+  bottom: 11px;
+  border: 9px solid transparent;
+  border-left-color: var(--qw-hairline);
+}
+
+/* --- 3. 常驻底栏输入区 --- */
+#control-panel.qw-composer,
+#control-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  transform: none;
+  width: 100%;
+  max-width: none;
+  box-sizing: border-box;
+  background: var(--qw-card);
+  padding: 10px 16px 12px;
+  box-shadow: 0 -6px 24px rgba(27, 27, 47, 0.10);
+  border-radius: 14px 14px 0 0;
+  border-top: 1px solid var(--qw-hairline);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 9999;
+  animation: none;
+}
+
+#closeInputBtn { display: none !important; }
+
+.qw-composer-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.qw-composer-left,
+.qw-composer-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  min-width: 0;
+}
+
+.qw-composer-sep {
+  width: 1px;
+  height: 24px;
+  background: var(--qw-hairline);
+  margin: 0 2px;
+  flex: 0 0 auto;
+}
+
+.qw-composer-icon-btn {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  box-sizing: border-box;
+  background: var(--qw-muted);
+  color: var(--qw-text-2);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  user-select: none;
+  font-size: 16px;
+  line-height: 1;
+  position: relative;
+  overflow: hidden;
+}
+
+.qw-composer-icon-btn:hover {
+  color: var(--qw-brand);
+  border-color: var(--qw-brand-ring);
+  background: var(--qw-brand-tint);
+}
+
+.qw-composer-icon-btn:active {
+  transform: scale(0.96);
+}
+
+.qw-composer-icon-btn svg {
+  display: block;
+  pointer-events: none;
+}
+
+/* 底栏内的主题切换: 复用升降动画, 图标用 currentColor; 盖过原 FAB 橙色底 */
+#control-panel #themeFab.qw-composer-icon-btn {
+  background: var(--qw-muted);
+  background-color: var(--qw-muted);
+}
+#control-panel #themeFab .qw-theme-icon {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 18px;
+  height: 18px;
+  transition: transform 0.35s ease, opacity 0.25s ease;
+}
+#control-panel #themeFab .qw-icon-sun,
+#control-panel #themeFab .qw-icon-moon {
+  color: var(--qw-text-2);
+  fill: currentColor;
+}
+
+#voiceInputBtn {
+  display: none !important;
+}
+
+/* 隐藏原左右悬浮控件 */
+.fab-container,
+#sidebar-index.sidebar-index {
+  display: none !important;
+}
+
+#control-panel textarea,
+#control-panel #globalInput {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 140px;
+  height: 40px;
+  /* 约 5 行正文 + 内边距; 超出后框内滚动, 底栏不再无限长高 */
+  max-height: 130px;
+  margin: 0;
+  padding: 10px 12px;
+  box-sizing: border-box;
+  resize: none;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  font-size: 15px;
+  line-height: 1.4;
+  outline: none;
+  display: block;
+  background: var(--qw-muted);
+  color: var(--qw-text);
+  overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+}
+
+#control-panel textarea:focus,
+#control-panel #globalInput:focus {
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 2px var(--qw-brand-ring);
+  background: var(--qw-card);
+}
+
+#globalSendBtn {
+  flex: 0 0 auto;
+  min-width: 88px;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--qw-brand-gradient);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+#globalSendBtn:hover {
+  filter: brightness(0.94);
+}
+
+#newSessionBtn {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 12px;
+  background: var(--qw-muted);
+  color: var(--qw-text);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+#newSessionBtn:hover {
+  background: #e8eaed;
+  border-color: #ccc;
+}
+
+/* 上传附件 / 会话: 样式见 .qw-composer-icon-btn */
+
+#attachBtn:hover {
+  background: var(--qw-brand-tint);
+  border-color: var(--qw-brand);
+  color: var(--qw-brand);
+}
+
+#attachBtn:active {
+  transform: scale(0.95);
+}
+
+#attachBtn svg {
+  display: block;
+  pointer-events: none;
+}
+
+/* 侧栏已有入口, 底栏内 hidden stub 不占位 */
+#groupSwitchBtn,
+#autoCloseInputToggle,
+.auto-close-toggle {
+  display: none !important;
+}
+
+/* --- 分组切换弹层 (group-switch.js): 挂 body, fixed, 浮在按钮上方 --- */
+.group-switch-pop {
+  position: fixed;
+  z-index: 10001;
+  box-sizing: border-box;
+  min-width: 240px;
+  max-width: 340px;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(27, 27, 47, 0.22);
+  padding: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.group-switch-title {
+  font-size: 12px;
+  color: var(--qw-text-2);
+  padding: 4px 8px 6px;
+  user-select: none;
+}
+
+.group-switch-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.group-switch-item:hover {
+  background: var(--qw-brand-tint);
+}
+
+.group-switch-item.disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.group-switch-item.disabled:hover {
+  background: transparent;
+}
+
+.group-switch-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.group-switch-item-name {
+  font-size: 14px;
+  color: var(--qw-text);
+  font-weight: 400;             /* "切换至" 前缀正常字重; 仅分组名(.qw-group-name)加粗 */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "切换至 X" 里的分组名: 加粗 (@ / 输入框下拉 与 分组弹层 共用) */
+.qw-group-name {
+  font-weight: 600;
+}
+
+.group-switch-avatars {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 4px;
+  overflow: hidden;
+}
+
+.group-switch-count {
+  flex: 0 0 auto;
+  font-size: 12px;
+  color: var(--qw-text-2);
+}
+
+.group-switch-empty {
+  font-size: 13px;
+  color: var(--qw-text-2);
+  text-align: center;
+  padding: 16px 10px;
+}
+
+.group-switch-manage {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  padding: 9px 8px;
+  border: none;
+  border-top: 1px solid var(--qw-hairline);
+  background: transparent;
+  color: var(--qw-brand);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 0 0 8px 8px;
+}
+
+.group-switch-manage:hover {
+  background: var(--qw-brand-tint);
+}
+
+/* --- 会话弹层 (session-switch.js): 复用分组弹层基类 .group-switch-pop 的外观, 这里只放会话特有部分 --- */
+.session-pop {
+  min-width: 420px;
+  max-width: min(560px, 92vw);
+  width: max(420px, 36vw);
+}
+
+.session-pop .group-switch-item-name {
+  white-space: normal;
+  overflow: visible;
+  text-overflow: unset;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+/* 顶部"＋ 保存…"动作 + 展开后的命名行: 会话弹层与分组弹层【共用】这一套(故用中性的 .qw-pop-* 前缀,
+   别改回 .session-*), 两边分别是"保存当前会话"和"保存为分组". 样式对齐 .group-switch-manage, 但在
+   列表上方、分隔线在下缘 */
+.qw-pop-save-btn {
+  display: block;
+  width: 100%;
+  margin-bottom: 4px;
+  padding: 9px 8px;
+  border: none;
+  border-bottom: 1px solid var(--qw-hairline);
+  background: transparent;
+  color: var(--qw-brand);
+  font-size: 14px;
+  cursor: pointer;
+  border-radius: 8px 8px 0 0;
+}
+
+.qw-pop-save-btn:hover {
+  background: var(--qw-brand-tint);
+}
+
+/* 展开后的命名行: 输入框 + 保存按钮 (Enter 确认 / Esc 收起) */
+.qw-pop-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 4px 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--qw-hairline);
+}
+
+.qw-pop-name-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 8px;
+  background: var(--qw-muted);
+  color: var(--qw-text);
+  font-size: 13px;
+  outline: none;
+}
+
+.qw-pop-name-input:focus {
+  border-color: var(--qw-brand);
+  background: var(--qw-card);
+}
+
+.qw-pop-name-ok {
+  flex: 0 0 auto;
+  padding: 7px 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--qw-brand);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.qw-pop-name-ok:hover {
+  opacity: 0.9;
+}
+
+/* 会话行主体沿用 .group-switch-item; 名字也走 "切换至 {name}" 模板(同分组行) —— 前缀常规字重、
+   仅会话名加粗由 .group-switch-item-name + .qw-group-name 负责, 这里无需再补样式 */
+
+.session-item-meta {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--qw-text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 行尾删除钮: 平时隐形, 悬停该行或键盘聚焦时显现. 隐藏态必须连点击一起禁掉(pointer-events:none):
+   触屏/无 hover 的输入方式下按钮不可见但命中区还在, 点到行尾会"无提示删除"而不是恢复 —— 落点应穿透到行上(=恢复).
+   触屏要删会话可走设置页"分组/会话"的管理列表(删除钮常显). */
+.session-del {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--qw-text-2);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.group-switch-item:hover .session-del,
+.session-del:focus-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.session-del:hover {
+  color: var(--qw-danger);
+  background: var(--qw-brand-tint);
+}
+
+/* --- 附件预览区域 --- */
+#attachmentPreview {
+  display: none;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--qw-muted);
+  border: 1px dashed var(--qw-track-off);
+  border-radius: 8px;
+  max-height: 88px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+#attachmentPreview.has-items {
+  display: flex;
+}
+
+.attachment-item {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  /* 不裁剪溢出，让删除按钮可以露出在角上 */
+  overflow: visible;
+}
+
+/* 图片 / 图标的容器：负责圆角、边框、裁剪 */
+.attachment-thumb {
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  overflow: hidden;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  position: relative;
+}
+
+.attachment-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.attachment-thumb .file-icon {
+  font-size: 22px;
+  color: var(--qw-text-2);
+}
+
+.attachment-thumb .file-ext {
+  position: absolute;
+  bottom: 2px;
+  left: 2px;
+  right: 2px;
+  font-size: 9px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.55);
+  padding: 1px 2px;
+  border-radius: 3px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.attachment-item .remove-btn {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--qw-danger);
+  color: #fff;
+  font-size: 12px;
+  line-height: 18px;
+  text-align: center;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+  display: none;
+  z-index: 5;
+}
+
+.attachment-item:hover .remove-btn {
+  display: block;
+}
+
+/* 拖拽进入输入框时高亮 */
+#control-panel.drag-over textarea {
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 3px var(--qw-brand-ring);
+}
+
+/* --- @ 单独发送给某站点 (mention.js): 候选下拉 + 目标 chip --- */
+/* 下拉挂 body、fixed 定位, 由 JS 浮在输入框上方(空间不足时下方). */
+.mention-menu {
+  position: fixed;
+  z-index: 10001;
+  box-sizing: border-box;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(27, 27, 47, 0.22);
+  padding: 6px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.mention-menu-title {
+  font-size: 12px;
+  color: var(--qw-text-2);
+  padding: 4px 8px 6px;
+  user-select: none;
+}
+
+/* "/" 菜单里紧跟在候选行之后的小节标题(即"常用语"段): 加一条细分隔线与上方分组段区隔 */
+.mention-item + .mention-menu-title {
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid var(--qw-hairline);
+}
+
+.mention-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mention-item.active,
+.mention-item:hover {
+  background: var(--qw-brand-tint);
+}
+
+.mention-item-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 14px;
+  color: var(--qw-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mention-item.active .mention-item-name {
+  color: var(--qw-brand);
+}
+
+/* @ 菜单里【已在待发目标中】的站点行: 品牌色勾 + 名称也上品牌色, 提示"再选一次 = 取消".
+   底色不加(会和 .active 的高亮打架, 上下键扫过时分不清哪行是光标所在). */
+.mention-item.picked .mention-item-name {
+  color: var(--qw-brand);
+}
+
+.mention-item-tick {
+  flex: 0 0 auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--qw-brand);
+}
+
+/* "未开启" 徽标: 提示选中后会自动开启并置顶 */
+.mention-item-badge {
+  flex: 0 0 auto;
+  font-size: 11px;
+  color: var(--qw-text-2);
+  background: var(--qw-muted);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 6px;
+  padding: 1px 6px;
+}
+
+/* 分组在 @ 菜单里: 文件夹字形图标(与站点 20px 图标同尺寸) + 品牌色"分组·N 个 AI"徽标 */
+.mention-group-icon {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  border-radius: 6px;
+  background: var(--qw-brand-tint);
+}
+
+/* 常用语在 "/" 菜单里: 气泡字形图标(与分组图标同尺寸, 用中性底色区分开分组) */
+.mention-preset-icon {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  border-radius: 6px;
+  background: var(--qw-muted);
+}
+
+/* "/" 菜单每行的类别快捷键提示("/g" 分组 / "/e" 常用语): 图标与标签之间, 比标签更小的字号 + 品牌色等宽,
+   让用户感知可直接打 /g / /e 整段列出. 挨着图标(负左边距收拢), 不参与省略. */
+.mention-item-key {
+  flex: 0 0 auto;
+  margin-left: -4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--qw-brand);
+}
+
+.mention-item-badge.mention-badge-group {
+  color: var(--qw-brand);
+  background: var(--qw-brand-tint);
+  border-color: var(--qw-brand-ring);
+}
+
+/* 目标 chip 条: 插在 textarea 上方, 表示"这条只发给这(几)个 AI".
+   多目标时按选中顺序横排, 装不下自动换行(flex-wrap), 尾部跟一个"全部取消". */
+.mention-target-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+
+.mention-target-label {
+  font-size: 13px;
+  color: var(--qw-text-2);
+}
+
+.mention-target-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 6px 4px 8px;
+  background: var(--qw-brand-tint);
+  border: 1px solid var(--qw-brand-ring);
+  border-radius: 999px;
+  font-size: 13px;
+  color: var(--qw-text);
+}
+
+.mention-target-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mention-target-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.12);
+  color: var(--qw-text);
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.mention-target-clear:hover {
+  background: var(--qw-danger);
+  color: #fff;
+}
+
+/* "全部取消": 只在目标 ≥2 时出现. 做成弱化的文字按钮, 不跟 chip 抢视觉. */
+.mention-target-clear-all {
+  flex: 0 0 auto;
+  padding: 3px 8px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--qw-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+  cursor: pointer;
+}
+
+.mention-target-clear-all:hover {
+  border-color: var(--qw-danger);
+  color: var(--qw-danger);
+}
+
+/* --- 引用卡片 (quotes.js): 在 AI 面板里划词引用进来的段落, 挂在输入框上方, 发送时拼成引用块放在提问前 ---
+   卡片 = 左侧品牌色竖条(来源 AI 的强调色, 即引用块左边那道线) + 图标 + 站名 + 一行摘要 + ×.
+   多条横排、装不下换行; 太多时限高滚动, 别把输入框挤没. */
+.qw-quote-bar {
+  display: none;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  max-height: 64px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px;             /* 给聚焦光圈/闪烁光圈留出位置, 不被 overflow 裁掉 */
+}
+
+.qw-quote-bar.has-items {
+  display: flex;
+}
+
+.qw-quote-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: min(100%, 360px);
+  height: 30px;
+  box-sizing: border-box;
+  padding: 0 4px 0 9px;
+  background: var(--qw-muted);
+  border: 1px solid var(--qw-hairline);
+  border-left: 3px solid var(--qw-quote-accent, var(--qw-brand));
+  border-radius: 8px;
+  font-size: 13px;
+  color: var(--qw-text);
+  cursor: default;
+  outline: none;
+  overflow: hidden;
+  animation: qwQuoteIn 0.18s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  transition: max-width 0.18s ease, opacity 0.16s ease, padding 0.18s ease, border-color 0.15s ease,
+    background-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.qw-quote-chip:hover,
+.qw-quote-chip:focus-visible {
+  border-color: var(--qw-brand-ring);
+  border-left-color: var(--qw-quote-accent, var(--qw-brand));
+  background: var(--qw-brand-tint);
+}
+
+.qw-quote-chip:focus-visible {
+  box-shadow: 0 0 0 2px var(--qw-brand-ring);
+}
+
+.qw-quote-chip .qw-ai-icon {
+  flex: 0 0 auto;
+}
+
+.qw-quote-name {
+  flex: 0 0 auto;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.qw-quote-snippet {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--qw-text-2);
+}
+
+.qw-quote-remove {
+  flex: 0 0 auto;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--qw-text-2);
+  font-size: 15px;
+  line-height: 20px;
+  cursor: pointer;
+}
+
+.qw-quote-remove:hover {
+  background: var(--qw-danger);
+  color: #fff;
+}
+
+.qw-quote-chip.qw-quote-noanim {
+  animation: none;
+}
+
+/* 删除: quotes.js 先把 max-width 钉成当前宽度, 再收到 0, 配合这里的淡出/去内边距 */
+.qw-quote-chip.qw-quote-leaving {
+  opacity: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-width: 0;
+  pointer-events: none;
+}
+
+/* 重复引用同一段: 不再挂一张, 原卡片闪一下 */
+.qw-quote-chip.qw-quote-flash {
+  animation: qwQuoteFlash 0.7s ease;
+}
+
+@keyframes qwQuoteIn {
+  from { opacity: 0; transform: translateY(-3px) scale(0.96); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes qwQuoteFlash {
+  0%, 100% { box-shadow: 0 0 0 0 transparent; }
+  30% { box-shadow: 0 0 0 3px var(--qw-brand-ring); background: var(--qw-brand-tint); }
+}
+
+/* 悬停预览: 卡片只放得下一行摘要, 全文在这里看(可滚动、可选中复制). 高于输入面板(9999)与 @ 下拉(10001) */
+.qw-quote-pop {
+  position: fixed;
+  z-index: 10002;
+  width: min(420px, calc(100vw - 24px));
+  box-sizing: border-box;
+  padding: 10px 12px 12px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  border: 1px solid var(--qw-hairline);
+  border-left: 3px solid var(--qw-quote-accent, var(--qw-brand));
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(27, 27, 47, 0.2);
+}
+
+.qw-quote-pop-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--qw-text-2);
+}
+
+.qw-quote-pop-body {
+  max-height: 220px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--qw-text);
+  user-select: text;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .qw-quote-chip,
+  .qw-quote-chip.qw-quote-flash {
+    animation: none;
+    transition: none;
+  }
+}
+
+.control-panel-footer {
+  display: none; /* 旧弹窗底栏布局已废弃, 控件并入 .qw-composer-row */
+}
+
+/* --- 常用语 / 语音 / 一键总结 --- */
+.input-meta-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+}
+.input-meta-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 40px;
+  padding: 0 10px;
+  font-size: 13px;
+  color: var(--qw-text-2);
+  background: var(--qw-muted);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  line-height: 1;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+.input-meta-btn:hover {
+  color: var(--qw-brand);
+  border-color: var(--qw-brand-ring);
+  background: var(--qw-brand-tint);
+}
+
+/* 窄屏: 工具换行, 输入框仍占满宽 */
+@media (max-width: 980px) {
+  .qw-composer-row {
+    flex-wrap: wrap;
+  }
+  #control-panel #globalInput {
+    order: -1;
+    flex: 1 1 100%;
+    min-height: 40px;
+  }
+  .qw-composer-left,
+  .qw-composer-right {
+    flex: 1 1 auto;
+  }
+}
+
+/* --- 常用语 / 提示词库 弹层 --- */
+.preset-popover {
+  position: fixed;
+  z-index: 10001;
+  box-sizing: border-box;
+  width: 340px;
+  max-width: 92vw;
+  max-height: 60vh;
+  flex-direction: column;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(27, 27, 47, 0.22);
+  padding: 10px;
+}
+.preset-pop-head {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--qw-text-2);
+  padding: 2px 4px 8px;
+}
+.preset-pop-list {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+}
+.preset-pop-empty {
+  font-size: 13px;
+  color: var(--qw-text-2);
+  opacity: 0.75;
+  padding: 12px 6px;
+  line-height: 1.5;
+}
+.preset-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  transition: background 0.12s;
+}
+.preset-item:hover { background: var(--qw-muted); }
+.preset-item-text {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  font-size: 14px;
+  color: var(--qw-text);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.preset-item-del {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  line-height: 22px;
+  text-align: center;
+  margin-right: 4px;
+  border-radius: 50%;
+  color: var(--qw-text-2);
+  cursor: pointer;
+  font-size: 16px;
+  opacity: 0;
+  transition: opacity 0.12s, background 0.12s, color 0.12s;
+}
+.preset-item:hover .preset-item-del { opacity: 0.7; }
+.preset-item-del:hover { background: var(--qw-danger); color: #fff; opacity: 1; }
+.preset-pop-add {
+  border-top: 1px solid var(--qw-hairline);
+  padding-top: 8px;
+  margin-top: 6px;
+}
+.preset-add-input {
+  width: 100%;
+  box-sizing: border-box;
+  resize: none;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 8px;
+  padding: 8px;
+  font-size: 13px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  outline: none;
+}
+.preset-add-input:focus { border-color: var(--qw-brand); box-shadow: 0 0 0 2px var(--qw-brand-ring); }
+.preset-add-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  justify-content: flex-end;
+}
+.preset-add-savecur, .preset-add-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid var(--qw-hairline);
+}
+.preset-add-savecur { background: var(--qw-muted); color: var(--qw-text); }
+.preset-add-savecur:hover { background: var(--qw-brand-tint); color: var(--qw-brand); border-color: var(--qw-brand-ring); }
+.preset-add-btn { background: var(--qw-brand-gradient); color: #fff; border: none; font-weight: 600; }
+.preset-add-btn:hover { filter: brightness(0.94); }
+
+.file-compatibility-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+  margin-bottom: 15px;
+  background: #fffbea;
+  border: 1px solid #ffc107;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #856404;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.banner-icon {
+  flex-shrink: 0;
+  font-size: 16px;
+  line-height: 1.4;
+}
+
+.banner-text {
+  flex: 1;
+  line-height: 1.5;
+  word-break: break-word;
+}
+
+.auto-close-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--qw-text-2);
+  cursor: pointer;
+  user-select: none;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.auto-close-toggle input {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* --- 4. 设置面板 & 历史面板 (通用弹窗样式) --- */
+/* 面板底色用移动端 ManagePanelBg (淡紫), 列表行做白卡片, 同移动端"管理AI"对话框 */
+.modal-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 400px;
+  height: 80vh;
+  background: var(--qw-bg);
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 10px 40px rgba(27, 27, 47, 0.28);
+  z-index: 10001;
+  display: none;
+  display: flex;
+  flex-direction: column;
+  /* 让内容可滚动 */
+}
+
+/* 仅"页面管理"tab 需要三列宽度; settings.js 据激活 tab 加/去 .pages-wide. 其它 tab 维持 400px. */
+.modal-panel.pages-wide {
+  width: 760px;
+  max-width: calc(100vw - 32px);
+}
+
+.modal-header {
+  margin: -20px -20px 10px -20px;
+  padding: 15px;
+  background: transparent;
+  border-radius: 16px 16px 0 0;
+  border-bottom: 1px solid var(--qw-hairline);
+  font-size: 17px;
+  font-weight: bold;
+  color: var(--qw-text);
+  cursor: move;
+  user-select: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+/* 关闭按钮 (在 Header 里) */
+.close-modal {
+  cursor: pointer;
+  color: var(--qw-text-2);
+  font-size: 20px;
+}
+
+.close-modal:hover {
+  color: var(--qw-text);
+}
+
+/* 滚动区域 */
+.scroll-content {
+  flex: 1;
+  overflow-y: auto;
+  padding-right: 5px;
+}
+
+/* --- 历史记录搜索栏 --- */
+.history-search-bar {
+  padding: 8px 0 12px 0;
+  flex-shrink: 0;
+}
+
+.history-search-bar input {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 13px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s;
+}
+
+.history-search-bar input:focus {
+  border-color: var(--qw-brand);
+}
+
+/* --- 历史记录列表样式 (白卡片行) --- */
+.history-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  padding-right: 40px;
+  /* 为删除按钮留出空间 */
+  margin-bottom: 8px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+  background: var(--qw-card);
+  cursor: pointer;
+  transition: background 0.2s;
+  position: relative;
+}
+
+.history-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-attachments {
+  display: flex;
+  flex-shrink: 0;
+  gap: 4px;
+  align-items: center;
+  padding-top: 2px;
+}
+
+.history-thumb {
+  width: 40px;
+  height: 40px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  flex-shrink: 0;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+}
+
+.history-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.history-thumb-file .file-icon {
+  font-size: 18px;
+  color: var(--qw-text-2);
+}
+
+.history-thumb-file .file-ext {
+  position: absolute;
+  bottom: 1px;
+  left: 1px;
+  right: 1px;
+  font-size: 8px;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 2px;
+  padding: 0 2px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.4;
+}
+
+.history-thumb-more {
+  font-size: 12px;
+  color: var(--qw-text-2);
+  font-weight: 500;
+  background: var(--qw-muted);
+}
+
+.history-delete-btn {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--qw-text-2);
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+
+.history-item:hover .history-delete-btn {
+  display: flex;
+}
+
+.history-delete-btn:hover {
+  background: var(--qw-danger);
+  color: white;
+}
+
+/* 收藏为常用语按钮 (悬停显示, 在删除按钮左侧) */
+.history-preset-btn {
+  position: absolute;
+  top: 50%;
+  right: 44px;
+  transform: translateY(-50%);
+  width: 28px;
+  height: 28px;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  color: var(--qw-text-2);
+  border-radius: 4px;
+  transition: all 0.2s;
+  cursor: pointer;
+}
+.history-item:hover .history-preset-btn { display: flex; }
+.history-preset-btn:hover { background: var(--qw-brand); color: #fff; }
+.history-preset-btn.saved { color: var(--qw-brand); }
+.history-preset-btn.saved svg path { fill: var(--qw-brand); }
+
+.history-item:hover {
+  background: var(--qw-brand-tint);
+}
+
+.history-text {
+  font-size: 14px;
+  color: var(--qw-text);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin-bottom: 5px;
+}
+
+.history-time {
+  font-size: 12px;
+  color: var(--qw-text-2);
+}
+
+.clear-history-btn {
+  color: var(--qw-danger);
+  font-size: 12px;
+  cursor: pointer;
+  margin-right: 10px;
+}
+
+/* --- 设置列表样式 (白卡片行, 同移动端 ManageAiDialog 列表项) --- */
+.setting-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 14px;
+  background: var(--qw-card);
+}
+
+/* 抓手光标只给真能拖的行(页面管理"已选"列, 见 settings.js createSelectedItem)。设置页其余各行也用 .setting-item
+   但不可拖, 挂在基础样式上会让整页都显示抓手, 误导用户以为能拖。 */
+.setting-item[draggable="true"] {
+  cursor: grab;
+}
+
+.setting-item.dragging {
+  opacity: 0.5;
+  background: var(--qw-brand-tint);
+  border: 2px dashed var(--qw-brand);
+}
+
+.item-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.drag-handle {
+  color: var(--qw-drag-handle);
+  font-size: 20px;
+  cursor: grab;
+  user-select: none;
+}
+
+.setting-label {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--qw-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 站点搜索框 (页面管理顶部, 过滤三列) */
+.pages-search {
+  position: relative;
+  flex-shrink: 0;
+  /* 与其它 tab 内容区顶距(.scroll-content 的 padding-top:10px)对齐: 搜索框是本 tab 首元素、紧贴 tab 栏,
+     这里用 margin-top(而非 padding-top)加 10px 顶距 —— 放大镜图标是 top:50% 居中定位, 用 padding 会把它顶歪. */
+  margin-top: 10px;
+}
+.pages-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--qw-text-2);
+  opacity: 0.7;
+  pointer-events: none;
+}
+.pages-search input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 9px 12px 9px 34px;
+  font-size: 14px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  outline: none;
+}
+/* 焦点用 inset 内嵌环(而非外扩 0 0 0 2px): 搜索框满宽处在 .tab-content{overflow:hidden} 里, 外扩环左右会被裁出生硬切边;
+   inset 画在边框盒内部、跟随圆角, 永不被父容器裁剪, 呈现"品牌边框 + 柔和内发光"的干净聚焦态. */
+.pages-search input:focus { border-color: var(--qw-brand); box-shadow: inset 0 0 0 2px var(--qw-brand-ring); }
+
+/* --- 页面管理: 三列布局 (已选 / 国内 / 国外) --- */
+.pages-columns {
+  display: flex;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;        /* 关键: 让内部 .scroll-content 能正确收缩并独立滚动 */
+  padding-top: 10px;
+}
+
+.pages-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.pages-col-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--qw-text-2);
+  padding: 0 4px 8px 4px;
+  flex-shrink: 0;
+}
+
+/* 目录列 (国内/国外) 的行: 图标 + 名称 + 添加/移除. 与 .setting-item 同卡片风格但不可拖. */
+.catalog-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 14px;
+  background: var(--qw-card);
+}
+
+.catalog-item.added .item-left {
+  opacity: 0.55;
+}
+
+/* 添加 / 移除 圆按钮 (目录列 +/− 与已选列 ×) */
+.page-add-btn,
+.page-remove-btn {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  transition: filter 0.15s, background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.page-add-btn {
+  border: none;
+  background: var(--qw-brand);
+  color: #fff;
+}
+
+.page-add-btn:hover {
+  filter: brightness(0.94);
+}
+
+.page-add-btn:disabled {
+  background: var(--qw-track-off);
+  color: #fff;
+  cursor: default;
+  filter: none;
+}
+
+.page-remove-btn {
+  border: 1px solid var(--qw-hairline);
+  background: var(--qw-card);
+  color: var(--qw-text-2);
+}
+
+.page-remove-btn:hover {
+  background: var(--qw-danger);
+  border-color: var(--qw-danger);
+  color: #fff;
+}
+
+/* 加减号用同一 SVG 的中心线, 避免字体基线和字形留白造成视觉偏移. */
+.page-catalog-toggle {
+  box-sizing: border-box;
+  line-height: 0;
+}
+
+.page-catalog-toggle svg {
+  display: block;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+}
+
+.page-catalog-toggle.page-remove-btn .page-catalog-plus-stem {
+  display: none;
+}
+
+/* 目录列的减号默认红底, 与蓝色加号直接区分; 已选列的 × 沿用原样式. */
+.page-catalog-toggle.page-remove-btn {
+  background: var(--qw-danger);
+  border-color: var(--qw-danger);
+  color: #fff;
+}
+
+.page-catalog-toggle.page-remove-btn:hover {
+  filter: brightness(0.94);
+}
+
+/* 已选列顶部的批量操作行: 反选 / 清空. 放在滚动容器外, 列表再长也始终可见.
+   俄/日等语言词长, 故允许省略号截断, 全文由 title 兜住. */
+.pages-bulk-row {
+  flex-shrink: 0;
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.pages-bulk-btn {
+  flex: 1;
+  min-width: 0;
+  padding: 7px 10px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  background: var(--qw-card);
+  color: var(--qw-text-2);
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.pages-bulk-btn:hover {
+  border-color: var(--qw-brand);
+  color: var(--qw-brand);
+  background: var(--qw-brand-tint);
+}
+
+/* 清空是"全部移出", 用危险色提示 */
+.pages-bulk-btn.pages-bulk-danger:hover {
+  border-color: var(--qw-danger);
+  color: var(--qw-danger);
+  background: transparent;
+}
+
+/* 第一列为空时的占位提示 */
+.pages-empty {
+  font-size: 12px;
+  color: var(--qw-text-2);
+  text-align: center;
+  padding: 22px 10px;
+  border: 1px dashed var(--qw-hairline);
+  border-radius: 12px;
+}
+
+/* --- 分组 tab (settings.js): 顶部功能说明 + 左列分组卡 + "新建"按钮 + 右列成员编辑器 --- */
+/* 分组卡的删除按钮换成垃圾桶图标: 居中、点击落到按钮上(而非 svg 路径) */
+.group-del-btn svg {
+  display: block;
+  pointer-events: none;
+}
+
+/* 顶部说明条: 让用户知道分组是"AI 预设 + @ 一键切换开启集". flex-shrink:0 不挤压下方两列. */
+.groups-intro {
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 12px 0 10px;
+  padding: 10px 12px;
+  background: var(--qw-brand-tint);
+  border: 1px solid var(--qw-brand-ring);
+  border-radius: 10px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--qw-text-2);
+}
+
+.groups-intro-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+/* 说明文案里内联的"切换分组"文件夹图标 (与实际按钮一致), 跟正文对齐 */
+.groups-intro-svg {
+  display: inline-block;
+  vertical-align: -3px;
+  margin: 0 1px;
+}
+
+.groups-add-btn {
+  flex-shrink: 0;
+  display: block;          /* 页面管理列里它在普通块容器内, 需显式占满整行 (分组页作为 flex 子项时也不受影响) */
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 8px;
+  padding: 9px 12px;
+  border: 1px dashed var(--qw-brand-ring);
+  border-radius: 12px;
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s, background 0.15s;
+}
+
+.groups-add-btn:hover {
+  background: var(--qw-brand-ring);
+}
+
+/* 左列: 一个分组一张卡 (名称 + 成员数 + 删除×), 高亮当前编辑中的分组 */
+.group-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 14px;
+  background: var(--qw-card);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.group-item:hover {
+  border-color: var(--qw-brand-ring);
+}
+
+.group-item.active {
+  border-color: var(--qw-brand);
+  background: var(--qw-brand-tint);
+}
+
+.group-item-main {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.group-item-name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--qw-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 第二行: "N 个 AI" + 同行成员头像. overflow:hidden 让头像宽度不够时只显示前面几个 */
+.group-item-sub {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 3px;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.group-item-count {
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--qw-text-2);
+}
+
+.group-item-avatars {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+  overflow: hidden;
+  flex-shrink: 1;
+}
+
+.group-item-avatar {
+  flex-shrink: 0;
+}
+
+/* 头像行放不下时尾部的 "…" 收起提示: 与头像同尺寸的中性圆点(宽高由 JS 按头像宽度设 inline) */
+.group-item-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--qw-hairline);
+  color: var(--qw-text-2);
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* 右列: 分组名输入 + 全部站点的成员开关行 */
+.group-editor-name {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  font-size: 14px;
+  outline: none;
+}
+
+.group-editor-name:focus {
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 2px var(--qw-brand-ring);
+}
+
+/* --- 常用语 tab (settings.js): 可编辑常用语列表, 每行 = 自适应高度 textarea + 垃圾桶删除 --- */
+.preset-edit-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.preset-edit-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: none;              /* 高度由 JS 按内容自适应 (上限后内部滚动) */
+  min-height: 40px;
+  padding: 9px 12px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.5;
+  outline: none;
+  overflow-y: hidden;        /* 高度由 JS 贴合内容; 顶到上限(200px)时 JS 再切回 auto 允许滚动 */
+}
+.preset-edit-input:focus {
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 2px var(--qw-brand-ring);
+}
+/* 删除按钮与 textarea 首行居中对齐 */
+.preset-edit-del {
+  margin-top: 7px;
+}
+/* 拖动把手(最右一列): 六点抓手, 平时低调、hover 变亮; 只有它是 grab 光标, 其余整行照常可编辑 */
+.preset-drag-handle {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  margin-top: 7px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--qw-drag-handle);
+  cursor: grab;
+  transition: color 0.15s;
+}
+.preset-drag-handle:hover { color: var(--qw-text-2); }
+.preset-drag-handle:active { cursor: grabbing; }
+.preset-drag-handle svg { display: block; pointer-events: none; }
+/* 拖动中的行: 半透明提示 (行自身无边框, 不套用站点卡的虚线框) */
+.preset-edit-row.dragging { opacity: 0.5; }
+
+/* --- 「功能」tab · 一键总结子页: 自定义一键总结提示词 (一个占满整列的多行输入 + 底部说明/恢复默认) --- */
+/* 列体自身作 flex 容器: textarea 吃掉剩余高度(内部滚动), 底部说明行固定在下方, 不随文本长短跳动.
+   与常用语那套"按内容自适应高度"不同 —— 这里只有一个框, 直接铺满更省事, 也免了隐藏时量不到高度的补量. */
+.qw-summary-prompt-body {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex: 1;
+}
+
+.qw-summary-prompt-input {
+  flex: 1;
+  min-height: 140px;
+  box-sizing: border-box;
+  resize: none;
+  padding: 10px 12px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 10px;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1.6;
+  outline: none;
+  overflow-y: auto;
+}
+
+.qw-summary-prompt-input:focus {
+  border-color: var(--qw-brand);
+  box-shadow: 0 0 0 2px var(--qw-brand-ring);
+}
+
+.qw-summary-prompt-foot {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.qw-summary-prompt-hint {
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--qw-text-2);
+}
+
+/* 编辑器名称下方: 已添加成员头像列表 (22px, 与站点行图标持平; 添加顺序, 可换行铺开; 无成员时隐藏不占位) */
+.group-editor-members {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  row-gap: 8px;
+  margin-bottom: 12px;
+  min-height: 30px;
+  padding: 3px 2px;
+}
+
+.group-editor-members:empty {
+  display: none;
+}
+
+.group-site-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  margin-bottom: 6px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+  background: var(--qw-card);
+}
+
+.group-site-row.member {
+  border-color: var(--qw-brand-ring);
+  background: var(--qw-brand-tint);
+}
+
+.group-site-row .item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.group-site-row .setting-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 成员开关: 未选 = 灰底 +, 已选 = 品牌底 ✓ */
+.group-member-toggle {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--qw-hairline);
+  background: var(--qw-muted);
+  color: var(--qw-text-2);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+
+.group-member-toggle.on {
+  background: var(--qw-brand);
+  border-color: var(--qw-brand);
+  color: #fff;
+}
+
+.group-member-toggle:hover {
+  filter: brightness(0.97);
+}
+
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--qw-track-off);
+  transition: .4s;
+  border-radius: 34px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked+.slider {
+  background-color: var(--qw-brand);
+}
+
+input:checked+.slider:before {
+  transform: translateX(16px);
+}
+
+.settings-footer {
+  margin-top: 20px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  border-top: 1px solid var(--qw-hairline);
+  padding-top: 15px;
+}
+
+/* 更多设置里的下拉框 / 提示文字 (从内联样式迁出, 便于深色模式接管) */
+.qw-select {
+  padding: 4px 8px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 8px;
+  font-size: 14px;
+  outline: none;
+  cursor: pointer;
+  background: var(--qw-card);
+  color: var(--qw-text);
+}
+
+/* 快捷键页: "输入/关闭"按键捕获按钮 + 侧栏两命令只读显示 */
+.qw-key-capture {
+  min-width: 96px;
+  padding: 4px 12px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 8px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  background: var(--qw-card);
+  color: var(--qw-text);
+  text-align: center;
+}
+.qw-key-capture:hover { border-color: var(--qw-brand-ring); }
+.qw-key-capture.capturing {
+  border-color: var(--qw-brand);
+  color: var(--qw-brand);
+  box-shadow: 0 0 0 3px var(--qw-brand-ring);
+}
+.qw-cmd-shortcut { display: flex; align-items: center; gap: 10px; }
+.qw-cmd-key {
+  min-width: 76px;
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: var(--qw-muted);
+  color: var(--qw-text);
+  font-size: 13px;
+  text-align: center;
+}
+.qw-cmd-edit {
+  padding: 4px 10px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 8px;
+  background: var(--qw-card);
+  color: var(--qw-brand);
+  font-size: 13px;
+  cursor: pointer;
+}
+.qw-cmd-edit:hover { background: var(--qw-brand-tint); }
+.qw-cmd-edit:disabled { opacity: 0.5; cursor: default; }
+
+/* ===== 导入导出页 (tab-backup) ===== */
+.qw-backup-page { padding-right: 4px; }
+/* 子页分段切换 (segmented control). 两处复用: 导入导出页的 导出/导入, 「功能」页的 分组/会话/常用语.
+   满宽等分 (每项 flex:1). 选中态【不用白底 thumb】—— 白块在淡紫面板底(--qw-bg)上太跳、跟四周不搭;
+   改用本 UI 通用的"选中态浅底": 品牌浅底(--qw-brand-tint) + 品牌色字, 与 .sidebar-item.active /
+   .mention-item.active 同一套语言, 落在灰轨道上是一块淡紫, 不抢视觉. */
+.qw-backup-seg {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  margin-bottom: 14px;
+  background: var(--qw-muted);
+  border-radius: 11px;
+}
+.qw-backup-seg-btn {
+  flex: 1;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--qw-text-2);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s;
+}
+/* 悬停只提字色: 未选中项若也铺底, 会跟选中态的淡紫糊在一起 */
+.qw-backup-seg-btn:hover { color: var(--qw-text); }
+.qw-backup-seg-btn.active {
+  color: var(--qw-brand);
+  font-weight: 600;
+  background: var(--qw-brand-tint);
+}
+
+/* --- 「功能」tab: 分段切换(复用上面的 .qw-backup-seg 样式) + 三个子页 + 会话管理列表 --- */
+/* seg 直接是 tab-content 的 flex 子项: 自己留顶距(其余 tab 的 10px 由 .scroll-content 的 padding-top 提供).
+   下距必须写全: 简写 margin 会把基类 .qw-backup-seg 的 margin-bottom:14px 抹成 0, 子页就贴上来了;
+   14px 与导入导出页 seg 到首行内容的间距一致. */
+.qw-groups-seg {
+  flex-shrink: 0;
+  margin: 10px 0 14px;
+}
+
+/* 子页容器要接续 .tab-content 的 flex 链路 (flex:1 + min-height:0), 否则内部 .scroll-content 无法独立滚动 */
+.qw-groups-subpage {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* 间距统一由 seg 的 14px 下距提供, 子页里的说明条不再叠加自己的 12px 顶距 */
+.qw-groups-subpage .groups-intro {
+  margin-top: 0;
+}
+
+/* 会话卡: 复用分组卡 .group-item 观感, 但内部纵排 (行1 + 可展开的网址区) */
+.session-mgr-item {
+  flex-direction: column;
+  align-items: stretch;
+}
+
+.session-mgr-row1 {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+/* 名称就地编辑: 平时像纯文本, 悬停浮现描边提示可改, 聚焦才是完整输入框态 */
+.session-mgr-name {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 6px;
+  margin-left: -6px;   /* 抵消内边距, 让文本与下行"N 个 AI"左对齐 */
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--qw-text);
+  font-size: 14px;
+  font-weight: 600;
+  outline: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.session-mgr-name:hover {
+  border-color: var(--qw-hairline);
+}
+
+.session-mgr-name:focus {
+  border-color: var(--qw-brand);
+  background: var(--qw-card);
+}
+
+.session-mgr-caret {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: var(--qw-text-2);
+  transition: transform 0.15s;
+}
+
+.session-mgr-item.expanded .session-mgr-caret {
+  transform: rotate(90deg);
+}
+
+.session-mgr-restore {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border: none;
+  border-radius: 999px;
+  background: var(--qw-brand-tint);
+  color: var(--qw-brand);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.session-mgr-restore:hover {
+  background: var(--qw-brand);
+  color: #fff;
+}
+
+/* 展开区: 各站点的对话网址 */
+.session-mgr-urls {
+  display: none;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--qw-hairline);
+  cursor: default;
+}
+
+.session-mgr-item.expanded .session-mgr-urls {
+  display: block;
+}
+
+.session-mgr-url-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--qw-text-2);
+}
+
+.session-mgr-url-site {
+  flex-shrink: 0;
+  color: var(--qw-text);
+}
+
+.session-mgr-url-link {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  user-select: text;   /* 允许选中复制 URL */
+}
+
+/* 卡片 / 开关行: 复用设置面板卡片观感(14px 圆角 / hairline 描边 / 卡片底), 不带拖拽手型 */
+.qw-backup-row,
+.qw-backup-card {
+  border: 1px solid var(--qw-hairline);
+  border-radius: 14px;
+  background: var(--qw-card);
+  margin-bottom: 10px;
+}
+.qw-backup-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+}
+.qw-backup-card { padding: 12px 14px; }
+/* 应用设置行: 主标签 + 灰色副说明 */
+.qw-backup-item-left { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.qw-backup-sub { font-size: 12px; color: var(--qw-text-2); line-height: 1.4; }
+/* 登录态卡片头: 标题 + 全选/全不选 */
+.qw-backup-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.qw-backup-selall { font-size: 12.5px; color: var(--qw-text-2); white-space: nowrap; }
+.qw-backup-selall a { color: var(--qw-brand); text-decoration: none; cursor: pointer; }
+.qw-backup-selall a:hover { text-decoration: underline; }
+.qw-backup-sep { margin: 0 6px; opacity: 0.4; }
+/* 站点网格(卡片内, 无自身描边; 超出滚动) */
+.qw-backup-site-list {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1px 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 2px 6px;
+}
+/* 导入: 选完文件后, 文件概述 + 设置勾选 + 站点列表 + 「开始导入」要在设置内容区里一屏放下, 否则按钮被挤出
+   可视范围、那个位置正好是底栏「取消/应用」—— 用户只看得到「应用」, 点了却不导入。列表高度随窗口高度收缩
+   (720px ≈ 面板外框与选项区其余部分的高度, 窗高 922 实测), 大窗口仍是 240px; 更矮的窗口由 settings.js
+   选完文件后把按钮滚进可视范围兜底。 */
+#backupImportSiteList { max-height: clamp(96px, calc(100vh - 720px), 240px); }
+.qw-backup-site {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 8px;
+  border-radius: 9px;
+  cursor: pointer;
+  min-width: 0;
+}
+.qw-backup-site:hover { background: var(--qw-muted); }
+.qw-backup-site input { width: 15px; height: 15px; flex: none; cursor: pointer; accent-color: var(--qw-brand); }
+.qw-backup-site .qw-ai-icon { flex: none; }
+.qw-backup-site .qw-backup-site-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--qw-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+/* 登录状态圆点(靠右): 有 cookie=绿, 无=灰; 无 cookie 的行淡化 */
+.qw-backup-site-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--qw-track-off);
+}
+.qw-backup-site-dot.has { background: #22c55e; }
+.qw-backup-site-empty .qw-backup-site-name { color: var(--qw-text-2); }
+.qw-backup-site-empty .qw-ai-icon { opacity: 0.5; }
+/* "检测登录状态"行(扩展未授权时显示) */
+.qw-backup-detect-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 2px 10px;
+}
+.qw-backup-detect-hint { font-size: 12px; color: var(--qw-text-2); }
+/* 主操作按钮行: 右对齐, 呼应面板底部 应用/取消 的对齐 */
+.qw-backup-actions { display: flex; justify-content: flex-end; margin: 2px 0 4px; }
+/* 导入卡片: 说明 / 勾选 / 文件信息 */
+.qw-backup-hint { font-size: 12.5px; line-height: 1.6; color: var(--qw-text-2); }
+.qw-backup-card > .qw-backup-hint { margin-bottom: 10px; }
+.qw-backup-check {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 0;
+  font-size: 14px;
+  color: var(--qw-text);
+  cursor: pointer;
+}
+.qw-backup-check input { width: 16px; height: 16px; cursor: pointer; accent-color: var(--qw-brand); }
+.qw-backup-check:has(input:disabled) { opacity: 0.45; }
+.qw-backup-check input:disabled { cursor: default; }
+.qw-backup-import-opts { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--qw-hairline); }
+.qw-backup-fileinfo { font-size: 13px; color: var(--qw-text-2); line-height: 1.6; margin-bottom: 6px; }
+/* 底部凭证警示 */
+.qw-backup-warn {
+  margin-top: 14px;
+  padding: 10px 12px;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--qw-text-2);
+  background: var(--qw-muted);
+  border-radius: 10px;
+}
+
+.qw-setting-hint {
+  min-width: 38px;
+  text-align: right;
+  font-size: 13px;
+  color: var(--qw-text-2);
+}
+
+/* 通用设置中与快捷键绑定的项：在名称旁显示当前键位，改键后由 settings.js 实时同步。 */
+.qw-setting-shortcut {
+  flex: 0 0 auto;
+  padding: 2px 7px;
+  border: 1px solid var(--qw-hairline);
+  border-radius: 6px;
+  background: var(--qw-muted);
+  color: var(--qw-text-2);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* 胶囊按钮, 主按钮走品牌渐变 (同移动端对话框按钮) */
+.btn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  border: none;
+  font-size: 14px;
+  font-weight: 600;
+  transition: filter 0.15s;
+}
+
+.btn-cancel {
+  background: var(--qw-card);
+  color: var(--qw-text);
+  border: 1px solid var(--qw-hairline);
+}
+
+.btn-cancel:hover {
+  background: var(--qw-muted);
+}
+
+.btn-apply {
+  background: var(--qw-brand-gradient);
+  color: white;
+}
+
+.btn-apply:hover {
+  filter: brightness(0.94);
+}
+
+/* --- Tab 样式 (选中: 品牌色 + 3px 指示条, 同移动端选项卡) --- */
+.modal-tabs {
+  display: flex;
+  background: transparent;
+  margin: -20px -20px 0 -20px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--qw-hairline);
+}
+
+/* 设置面板的标题栏紧接着 tab 条, 而 .modal-tabs 用 margin-top:-20px 上顶, 于是标题栏的下边线正好
+   横穿 tab 条上部(约 10px 处) —— tab 文字被压得像没垂直居中. 这里只在设置面板去掉它, 分隔交给
+   .modal-tabs 自己的下边线; 历史面板等没有 tab 条的 .modal-header 仍保留下边线. */
+#settings-panel .modal-header {
+  border-bottom: none;
+}
+
+.tab-btn {
+  padding: 10px 15px;
+  font-size: 14px;
+  cursor: pointer;
+  color: var(--qw-text-2);
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab-btn.active {
+  color: var(--qw-brand);
+  border-bottom-color: var(--qw-brand);
+  font-weight: bold;
+}
+
+.tab-content {
+  display: none;
+  flex-direction: column;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-content.active {
+  display: flex;
+}
+
+/* 各设置 tab 内容区统一顶部内边距 (与页面管理 .pages-columns 的 10px 对齐);
+   只作用于 tab-content 直属滚动区, 不波及页面管理三列的列体与历史列表;
+   关于 tab 的四个子页上方有分段条, 顶距由分段条的下距提供, 无需 */
+.tab-content > .scroll-content:not(.qw-about-subpage) {
+  padding-top: 10px;
+}
+
+/* 通用设置 / 快捷键里的分类标题: 把设置项分组, 靠底部细线分隔 */
+.settings-section-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--qw-text-2);
+  padding: 0 2px 8px;
+  margin: 16px 0 6px;
+  border-bottom: 1px solid var(--qw-hairline);
+}
+
+.settings-section-title:first-child {
+  margin-top: 0;
+}
+
+/* 关于 tab: 顶部分段条切 关于 / 更新日志 / 已知问题 / 反馈 四个子页 (settings.js showAboutSub).
+   分段条直接是 tab-content 的 flex 子项, 顶/底距同「功能」tab 的 .qw-groups-seg; 每个子页各自是独立滚动区. */
+.qw-about-seg {
+  flex-shrink: 0;
+  margin: 10px 0 14px;
+}
+
+/* 关于 → 关于子页: 居中展示 logo / 名称 / 版本号 */
+.qw-about {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;   /* 上方多了分段条: 窗口太矮放不下时退回顶部对齐, 不裁掉 logo */
+  text-align: center;
+  gap: 8px;
+  padding: 0 50px;   /* 左右内边距; 上下保持 0 (整体垂直居中) */
+}
+.qw-about-logo { width: 72px; height: 72px; border-radius: 16px; margin-bottom: 6px; }
+.qw-about-name { font-size: 18px; font-weight: 700; color: var(--qw-text); }
+.qw-about-version { font-size: 13px; color: var(--qw-text-2); }
+.qw-about-desc { font-size: 12px; color: var(--qw-text-2); margin-top: 2px; }
+/* 去应用商店给好评 (仅插件版显示, PC 版由 settings.js 隐藏): 在简介与官网行之间, 上下各 24px (flex gap 8 + margin 16) */
+.qw-about-review-btn { margin-top: 16px; cursor: pointer; }
+/* 官网行: "官网：URL （可下载移动端app）" 同一行 (hint inline 紧贴 link, app 注记在 URL 后;
+   URL 不 break-all 保持完整, 中文一行放得下, 窄语言才在空格处优雅折行) */
+.qw-about-site { margin-top: 16px; }
+.qw-about-hint { font-size: 12px; color: var(--qw-text-2); }
+.qw-about-link { font-size: 13px; color: var(--qw-brand); text-decoration: none; cursor: pointer; }
+.qw-about-link:hover { text-decoration: underline; }
+.qw-about-app { font-size: 12px; color: var(--qw-text-2); }
+
+/* 更新日志没有可显示的版本时的占位 (#aboutChangelogEmpty): 撑满剩余高度, 文字居中 */
+.qw-about-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--qw-text-2);
+}
+
+/* --- 关于 → 已知问题: 版式同关于 / 反馈子页, 内容整体居中 (超高时 safe 退回顶部对齐, 可滚动) ---
+   插件版 (.qw-issues): 橙色提示图标 + 标题 + 问题卡片 (每行 = 站点图标 + 说明, 行间虚线, 同更新日志卡片) + 引导去官网;
+   PC 版 (.qw-issues-empty): 绿色对勾 + "暂无已知问题". 橙 / 绿与更新日志「Bug 修复」「优化」标签同色系. */
+.qw-issues-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  padding: 0 40px 12px;
+}
+.qw-issues,
+.qw-issues-empty {
+  width: 100%;
+  max-width: 520px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.qw-issues-badge {
+  flex-shrink: 0;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qw-issues-badge.is-warn { color: #D0610D; background: rgba(249, 115, 22, 0.12); }
+.qw-issues-badge.is-ok { color: #0C936A; background: rgba(17, 184, 132, 0.12); }
+[data-qw-theme="dark"] .qw-issues-badge.is-warn { color: #FFA25C; background: rgba(249, 115, 22, 0.20); }
+[data-qw-theme="dark"] .qw-issues-badge.is-ok { color: #3DD6A3; background: rgba(17, 184, 132, 0.18); }
+.qw-issues-title { margin-top: 14px; font-size: 15px; font-weight: 700; line-height: 1.5; color: var(--qw-text); }
+.qw-issues-list {
+  width: 100%;
+  box-sizing: border-box;   /* width:100% 含内边距和边框, 否则整行宽时会横向溢出 */
+  margin: 18px 0 0;
+  padding: 4px 16px;
+  list-style: none;
+  text-align: left;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+}
+.qw-issues-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--qw-text);
+}
+.qw-issues-item + .qw-issues-item { border-top: 1px dashed var(--qw-frame-border); }
+/* 站点图标槽 (settings.js 往里填 28px 图标); 没填上时 (如非插件版) 也占住位置, 文字不会跳 */
+.qw-issues-item-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.qw-issues-cta { margin-top: 20px; font-size: 13px; line-height: 1.6; color: var(--qw-text-2); }
+.qw-issues-cta-btn { margin-top: 12px; }
+.qw-issues-empty-text { margin-top: 14px; font-size: 15px; font-weight: 600; color: var(--qw-text); }
+
+/* --- 关于 → 更新日志: 左栏版本时间线 + 右栏全部版本连续排列, 两栏各自滚动 (渲染与联动见 settings.js renderChangelog) ---
+   左栏: 一个版本一个节点, 最新在上; 点节点平滑滚到该版本, 右栏滚动时高亮跟着当前阅读的版本走.
+   高亮的节点 = 品牌色实心点 + 品牌色字, 其余是空心环.
+   右栏: 每个版本 = 版本号标题 + 白卡片, 新版本在上依次往下排, 一条滚动条看完全部. 卡片里按「功能新增 / Bug 修复 / 优化」分节, 节标题是带类别色的小标签
+   (新增=品牌蓝 / 修复=橙 / 优化=绿), 节与节之间虚线分隔. 条目用有序列表, 序号走次级灰;
+   彩色只留给节标签和 @昵称, 正文保持主色好读. */
+.qw-changelog-page {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  gap: 14px;
+}
+.qw-changelog-nav {
+  position: relative;          /* 节点的 offsetTop 以本栏为基准 (settings.js 把选中节点滚进可视区时用) */
+  flex: 0 0 120px;
+  overflow-y: auto;
+  padding: 2px 4px 12px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--qw-track-off) transparent;
+}
+.qw-changelog-nav::-webkit-scrollbar { width: 6px; }
+.qw-changelog-nav::-webkit-scrollbar-track { background: transparent; }
+.qw-changelog-nav::-webkit-scrollbar-thumb { background: var(--qw-track-off); border-radius: 3px; }
+/* 节点 (button): 左 26px 留给圆点和连线. 圆点对齐版本号那一行, 离节点顶部的距离固定, 所以带不带日期连线都对得上 */
+.qw-changelog-node {
+  position: relative;
+  display: block;
+  width: 100%;
+  margin: 0 0 6px;
+  padding: 6px 6px 6px 26px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  color: var(--qw-text-2);
+  cursor: pointer;
+}
+.qw-changelog-node:last-child { margin-bottom: 0; }
+/* 圆点: 11px 空心环, 圆心 (12.5px, 15px) = 版本号行 (上内边距 6 + 行高 18 的一半) 的正中; 压在连线上面, 环内底色把线挡住 */
+.qw-changelog-node::before {
+  content: '';
+  position: absolute;
+  z-index: 1;
+  left: 7px;
+  top: 9.5px;
+  width: 11px;
+  height: 11px;
+  box-sizing: border-box;
+  border-radius: 50%;
+  border: 2px solid var(--qw-drag-handle);
+  background: var(--qw-bg);
+  transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+/* 连线: 本节点圆心 → 下一节点圆心 (= 本节点高 + 6px 间距); 与空心环同色, 连成一条完整的线; 最后一个节点不画 */
+.qw-changelog-node::after {
+  content: '';
+  position: absolute;
+  left: 12px;
+  top: 15px;
+  width: 1px;
+  height: calc(100% + 6px);
+  background: var(--qw-drag-handle);
+}
+.qw-changelog-node:last-child::after { display: none; }
+.qw-changelog-node-ver {
+  display: block;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.qw-changelog-node-date {
+  display: block;
+  margin-top: 1px;
+  font-size: 11px;
+  line-height: 15px;
+  color: var(--qw-text-2);
+  font-variant-numeric: tabular-nums;
+}
+/* 悬停: 字色提亮 + 圆环转品牌色, 提示可点 (不铺底色: 空心环内的底色会在底上露出一圈) */
+.qw-changelog-node:hover { color: var(--qw-text); }
+.qw-changelog-node:hover::before { border-color: var(--qw-brand); }
+.qw-changelog-node.active { color: var(--qw-brand); }
+.qw-changelog-node.active .qw-changelog-node-ver { font-weight: 700; }
+.qw-changelog-node.active::before {
+  border-color: var(--qw-brand);
+  background: var(--qw-brand);
+  box-shadow: 0 0 0 3px var(--qw-brand-tint);
+}
+.qw-changelog-node:focus-visible { outline: 2px solid var(--qw-brand-ring); outline-offset: -2px; }
+/* 右栏: 复用 .scroll-content (flex:1 + 纵向滚动 + 右侧 5px 留给滚动条). position:relative 让各版本块的 offsetTop
+   以本栏为基准 —— 点节点滚到某版本、按滚动位置同步高亮都靠它 */
+.qw-changelog-detail { position: relative; min-width: 0; padding-bottom: 16px; }
+/* 版本块: flow-root 自成一个布局上下文, 标题行的上外边距留在块内. 否则它会穿出块外与块间距合并 ——
+   首个版本的 offsetTop 变成 6 (点它滚不回最顶), 版本间距也少了这 6px */
+.qw-changelog-block { display: flow-root; }
+/* 版本与版本之间留出间距 (加上标题行 6px 的上外边距, 上一张卡片底到下一个版本号约 30px) */
+.qw-changelog-block + .qw-changelog-block { margin-top: 24px; }
+/* 标题行: 版本号与日期按文字基线对齐 —— 两者字号不同 (17px / 12px), 居中对齐会让小字号的日期往上飘 */
+.qw-changelog-head {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  height: 22px;
+  margin: 6px 0 10px;
+}
+.qw-changelog-ver { font-size: 17px; font-weight: 700; color: var(--qw-text); letter-spacing: 0.2px; }
+.qw-changelog-date { font-size: 12px; color: var(--qw-text-2); font-variant-numeric: tabular-nums; }
+.qw-changelog-card {
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+  padding: 14px 16px;
+}
+.qw-changelog-sec + .qw-changelog-sec {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--qw-frame-border);
+}
+/* 节标签: 未知类别(数据里自定义的键名)走中性灰; 三个已知类别 (changelog.json 的 feature / bugfix / optimize, 由 settings.js
+   挂成 .is-<键名>) 各自上色. 橙/绿的字色比底色用的 #F97316 / --qw-success 压深一档,
+   浅底上 12px 字才够对比度 (三种标签对比度相近, 看起来一样重); 橙色特意偏红, 与提示条的琥珀黄 (#FFB300) 区分开.
+   深色模式换成提亮的字色 + 加浓的底 (见下方 dark 覆盖) */
+.qw-changelog-sec-title {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  margin-bottom: 8px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--qw-text-2);
+  background: var(--qw-muted);
+}
+.qw-changelog-sec.is-feature .qw-changelog-sec-title { color: var(--qw-brand); background: var(--qw-brand-tint); }
+.qw-changelog-sec.is-bugfix .qw-changelog-sec-title { color: #D0610D; background: rgba(249, 115, 22, 0.12); }
+.qw-changelog-sec.is-optimize .qw-changelog-sec-title { color: #0C936A; background: rgba(17, 184, 132, 0.12); }
+[data-qw-theme="dark"] .qw-changelog-sec.is-bugfix .qw-changelog-sec-title { color: #FFA25C; background: rgba(249, 115, 22, 0.20); }
+[data-qw-theme="dark"] .qw-changelog-sec.is-optimize .qw-changelog-sec-title { color: #3DD6A3; background: rgba(17, 184, 132, 0.18); }
+.qw-changelog-list {
+  margin: 0;
+  padding-left: 20px;
+}
+.qw-changelog-list li {
+  padding-left: 2px;
+  font-size: 13px;
+  line-height: 1.75;
+  color: var(--qw-text);
+}
+.qw-changelog-list li + li { margin-top: 4px; }
+.qw-changelog-list li::marker { color: var(--qw-text-2); font-variant-numeric: tabular-nums; }
+/* 条目里的 "@昵称": 致谢提建议 / 反馈问题的用户 (识别规则见 settings.js fillChangelogText) */
+.qw-changelog-mention { color: var(--qw-brand); font-weight: 500; }
+
+/* 关于 → 反馈子页: 说明 + QQ 群二维码 + 群号, 整体居中 */
+.qw-feedback-page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  /* 垂直居中 (与关于子页一致); safe 保证内容超高时退回顶部对齐、不裁顶且可滚动 */
+  justify-content: safe center;
+  text-align: center;
+  gap: 12px;
+  /* 页面内边距与其它 tab 一致: 只继承 .scroll-content 的 padding-right: 5px, 不再额外内缩 */
+  overflow-y: auto;
+}
+.qw-feedback-text { font-size: 13px; line-height: 1.7; color: var(--qw-text-2); }
+/* QQ 群二维码 (白底, 便于扫码) + 文字群号 */
+.qw-feedback-qr {
+  width: 180px;
+  height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 0.5px solid var(--qw-frame-border);
+  border-radius: 12px;
+  background: #fff;
+}
+.qw-feedback-qr-img { width: 100%; height: 100%; object-fit: contain; }
+.qw-feedback-group { font-size: 13px; font-weight: 500; color: var(--qw-text); user-select: text; }
+
+.setting-group {
+  padding: 15px 10px;
+  border-bottom: 1px solid #eee;
+}
+
+.setting-group-title {
+  font-size: 12px;
+  color: #70757a;
+  margin-bottom: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 50px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+/* --- 更新提示横幅 --- */
+#update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 12px 24px;
+  background: var(--qw-brand-gradient);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.2);
+  z-index: 100000;
+  animation: bannerSlideDown 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+  font-family: sans-serif;
+}
+
+#update-banner .update-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+#update-banner .update-text {
+  flex: 1;
+  min-width: 0;
+}
+
+#update-banner .update-title {
+  font-size: 14px;
+  font-weight: bold;
+  line-height: 1.4;
+}
+
+#update-banner .update-notes {
+  font-size: 12px;
+  opacity: 0.9;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#update-banner .update-actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+#update-banner .btn-update-primary,
+#update-banner .btn-update-secondary {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+#update-banner .btn-update-primary {
+  background: #fff;
+  color: var(--qw-brand-indigo);
+}
+
+#update-banner .btn-update-primary:hover {
+  background: #f0f0f0;
+}
+
+#update-banner .btn-update-secondary {
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
+
+#update-banner .btn-update-secondary:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+@keyframes bannerSlideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* ===== 嵌入站点权限提示条 (chrome/index.js qwShowEmbedPermBanner, chrome-only) ===== */
+/* 顶部居中浮动卡片: 已启用需权限站点(perplexity)但 optional 权限缺失时引导用户一键授权. 主题自适应. */
+.qw-embed-perm-banner {
+  position: fixed;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: min(90vw, 560px);
+  padding: 10px 14px;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-brand-ring);
+  border-radius: 12px;
+  color: var(--qw-text);
+  font-size: 13px;
+  line-height: 1.4;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+}
+.qw-embed-perm-banner .qw-epb-text { flex: 1; min-width: 0; }
+.qw-embed-perm-banner .qw-epb-grant {
+  flex: none;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  background: var(--qw-brand-gradient);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.qw-embed-perm-banner .qw-epb-grant:hover { opacity: 0.92; }
+.qw-embed-perm-banner .qw-epb-close {
+  flex: none;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  color: var(--qw-text);
+  opacity: 0.45;
+  padding: 0 2px;
+}
+.qw-embed-perm-banner .qw-epb-close:hover { opacity: 0.85; }
+
+/* ===== Toast 提示气泡 (settings.js showToast) ===== */
+/* 顶部居中堆叠. z-index 取极大值, 确保盖过站点网格 / 设置面板 / 更新 banner 等所有层. */
+#qw-toast-container {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483647;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  max-width: 90vw;
+  pointer-events: none;
+}
+.qw-toast {
+  pointer-events: auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 460px;
+  padding: 12px 14px;
+  background: #fff8e1;
+  color: #663c00;
+  border: 1px solid #ffe082;
+  border-left: 4px solid #ffb300;
+  border-radius: 8px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.18);
+  font-size: 14px;
+  line-height: 1.6;
+  opacity: 0;
+  transform: translateY(-12px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.qw-toast.qw-toast-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+.qw-toast.qw-toast-hide {
+  opacity: 0;
+  transform: translateY(-12px);
+}
+.qw-toast-text {
+  flex: 1;
+  word-break: break-word;
+}
+.qw-toast-close {
+  flex-shrink: 0;
+  padding: 0 2px;
+  background: transparent;
+  border: none;
+  color: #663c00;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+}
+.qw-toast-close:hover {
+  opacity: 1;
+}
+
+/* ===== 深色模式 (配色对齐移动端 Theme.kt 的 dark 方案) =====
+   不用媒体查询: state.js 解析"跟随系统/浅色/深色"设置后在 <html> 上写
+   data-qw-theme="light|dark", 这里只认属性. "跟随系统"的实时切换由 state.js
+   监听 matchMedia 完成. 属性选择器自带更高特异性, 可安全覆盖前文同名规则. */
+:root[data-qw-theme="dark"] {
+  --qw-bg: #131326;            /* 移动端 dark AppBackground */
+  --qw-card: #1C1C33;          /* 移动端 dark SurfaceCard */
+  --qw-muted: #262640;
+  --qw-text: #E7E6F2;          /* 移动端 dark TextPrimary */
+  --qw-text-2: #9C9CB8;
+  --qw-hairline: #2A2A45;
+  --qw-track-off: #3A3A57;
+  --qw-frame-border: #2A2A45;
+  --qw-frame-toolbar: #23233A;       /* 深色: 比 card(#1C1C33) 略亮一档 */
+  --qw-drag-handle: #4D4D6E;
+  --qw-drag-shadow: 0 12px 30px rgba(0, 0, 0, 0.55);   /* 深色底上要更重更黑才看得出层次 */
+  --qw-glass: rgba(28, 28, 51, 0.94);
+  --qw-brand-tint: rgba(85, 102, 245, 0.22);
+  --qw-brand-ring: rgba(85, 102, 245, 0.38);
+  color-scheme: dark;
+}
+
+/* 深色 glyph 或含大面积白色高光的光泽 logo (grok/元宝/文心/z.ai/dola) 垫白色圆角小底:
+   前者不垫会在深色卡片上隐身, 后者直接铺深色卡片会糊成白团. box-shadow 扩边不占布局, 跟 border-radius 走 */
+[data-qw-theme="dark"] img.qw-ai-icon-darkglyph {
+  background: #fff;
+  border-radius: 30%;
+  box-shadow: 0 0 0 2px #fff;
+}
+
+/* BrandBlack 的设置 FAB 在深色底上隐身, 换次级底色 */
+[data-qw-theme="dark"] #settingsBtn {
+  background-color: #3A3A57;
+}
+
+/* 日/夜切换 FAB 的深色态: 夜蓝月亮 (图标升降见浅色区的 .qw-theme-icon 规则).
+   不用 #3A3A57, 避免和深色态的设置 FAB 撞色成两颗一样的圆 */
+[data-qw-theme="dark"] #themeFab {
+  background-color: #4D4D6E;
+}
+
+/* 底栏内按钮深色态与其它图标钮统一, 不要沿用旧 FAB 色块 */
+[data-qw-theme="dark"] #control-panel #settingsBtn.qw-composer-icon-btn,
+[data-qw-theme="dark"] #control-panel #themeFab.qw-composer-icon-btn,
+[data-qw-theme="dark"] #control-panel #historyBtn.qw-composer-icon-btn {
+  background: var(--qw-muted);
+  background-color: var(--qw-muted);
+  color: var(--qw-text-2);
+}
+
+/* @ 目标 chip 的"清除"按钮: 深色下黑底不显, 换浅色半透明底 */
+[data-qw-theme="dark"] .mention-target-clear {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+/* 引用卡片/预览的品牌色竖条: 几个 AI 的强调色本身近黑(grok/阶跃/z.ai), 深色底上会隐身, 掺白提亮 */
+[data-qw-theme="dark"] .qw-quote-chip,
+[data-qw-theme="dark"] .qw-quote-chip:hover,
+[data-qw-theme="dark"] .qw-quote-chip:focus-visible,
+[data-qw-theme="dark"] .qw-quote-pop {
+  border-left-color: color-mix(in srgb, var(--qw-quote-accent, var(--qw-brand)) 72%, #fff);
+}
+
+[data-qw-theme="dark"] .qw-quote-pop {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+}
+
+/* 琥珀系提示 (toast / 文件兼容横幅) 的深色配方 */
+[data-qw-theme="dark"] .qw-toast,
+[data-qw-theme="dark"] .file-compatibility-banner {
+  background: #2E2917;
+  color: #E8C66B;
+  border-color: #5C4A1A;
+}
+
+[data-qw-theme="dark"] .qw-toast {
+  border-left-color: #FFB300;
+}
+
+[data-qw-theme="dark"] .qw-toast-close {
+  color: #E8C66B;
+}
+
+/* --- 统一会话时间线: 右缘【独立窄条】+ 圆点 minimap (timeline-panel.js) --- */
+/* 透明底(露出身后页面色, 与 iframe 间隙同色)、10px 宽, 落在预留 gutter 里(见文末 body.qw-tl-active).
+   z-index 高于所有 frame——含【最大化面板】(.frame-wrapper.maximized=99999): 否则某面板最大化后时间线被全屏 webview/iframe 盖住、
+   彻底不可用. 取 100001/100002(在最大化层之上; 条本身 pointer-events:none, 只有圆点吃鼠标, 不挡最大化面板交互). */
+#qw-tl-rail {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 10px; z-index: 100001; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+  background: transparent; /* 透明: 露出身后页面底色(与 iframe 间隙同色), 不再是突兀的白卡片; 只剩淡轨道线+圆点 */
+}
+.qw-tl-dots {
+  position: relative;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  padding: 10px 0;
+  width: 10px; box-sizing: border-box;   /* 与 rail 同宽: hover 放大的 9.6px 圆点正好落在内, 下面开了 overflow 也不会横向裁掉它 */
+  max-height: 100vh;                      /* 提问极多时(120 上限 ≈1700px)限高到视口 —— 否则 flex 居中会把首尾点顶出视口, 够不着 */
+  overflow-y: auto;                       /* 超出视口就纵向滚动, 首尾点也能 hover/点击 */
+  scrollbar-width: none;                  /* Firefox: 藏滚动条(细条里不占地方) */
+}
+.qw-tl-dots::-webkit-scrollbar { width: 0; height: 0; } /* Chrome/Edge: 藏滚动条 */
+/* 淡竖线做"轨道", 圆点落在线上 → 读起来是一条时间线而非零散圆点 */
+.qw-tl-dots::before {
+  content: ''; position: absolute; top: 10px; bottom: 10px; left: 50%;
+  width: 1.5px; transform: translateX(-50%);
+  background: var(--qw-hairline); opacity: 0.7; pointer-events: none;
+}
+.qw-tl-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--qw-text-2); opacity: 0.4; cursor: pointer; pointer-events: auto;
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease;
+}
+.qw-tl-dot:hover { opacity: 1; background: var(--qw-brand); transform: scale(1.6); } /* 6→9.6px, 落在 10px 细条内不裁 */
+/* hover 气泡: 弹在圆点左侧, 显示该提问详情 */
+.qw-tl-tip {
+  position: fixed; z-index: 100002; max-width: 320px;   /* 高于 rail(100001)与最大化面板(99999): 气泡也要能浮在最大化面板之上 */
+  background: var(--qw-card); color: var(--qw-text);
+  border: 1px solid var(--qw-hairline); border-radius: 10px;
+  padding: 9px 11px; font-size: 13px; line-height: 1.5;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.14);
+  white-space: normal; word-break: break-word;
+}
+.qw-tl-tip-num { font-weight: 700; color: var(--qw-brand); margin-right: 6px; }
+.qw-tl-tip-text { color: var(--qw-text); }
+.qw-tl-tip-time { margin-top: 4px; font-size: 11px; color: var(--qw-text-2); opacity: 0.8; }
+.qw-tl-tip-cov { margin-top: 3px; font-size: 11px; color: var(--qw-text-2); opacity: 0.7; } /* 覆盖度 n/m: 点击会滚动几个面板 */
+/* 目标站名单: 点它会滚哪几个面板(hit) / 发给过但此刻定位不到哪几个(miss, 再灰一档). 名单本身不换色, 靠透明度分层, 免得跟正文抢眼. */
+.qw-tl-tip-sites { margin-top: 3px; font-size: 11px; color: var(--qw-text-2); opacity: 0.85; }
+.qw-tl-tip-sites-miss { opacity: 0.5; }
+/* 有提问时给最右侧留一条 16px 专属窄条(网格左缩让出), 细线待在自己的 gutter 里, 不压任何面板内容.
+   只在有内容(body.qw-tl-active)时留, 空时不占地方. 细线自身用 positionRail 摆到 gutter(滚动条左侧). */
+body.qw-tl-active #grid-container { padding-right: 14px; }
+
+/* ==================== AI 一键总结 / 回答朗读 / 语音输入 ==================== */
+
+/* --- 语音输入: 录音中按钮变红脉冲 --- */
+.input-meta-btn.recording {
+  color: #fff;
+  background: var(--qw-danger);
+  border-color: var(--qw-danger);
+  animation: qwPulse 1.2s ease-in-out infinite;
+}
+@keyframes qwPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* --- 通用小弹层 (汇总目标选择) --- */
+.qw-pop {
+  position: fixed;
+  z-index: 100001;   /* 高于最大化面板(99999)与更新横幅(100000): 收集期间面板被最大化, 结果弹层也不能开在其背后; 仍低于 toast(2147483646+) */
+  box-sizing: border-box;
+  min-width: 200px;
+  max-width: 340px;
+  max-height: 60vh;
+  overflow-y: auto;
+  background: var(--qw-card);
+  border: 1px solid var(--qw-hairline);
+  border-radius: 12px;
+  box-shadow: 0 8px 28px rgba(27, 27, 47, 0.22);
+  padding: 8px;
+}
+.qw-pop-title { font-size: 12px; font-weight: 600; color: var(--qw-text-2); padding: 2px 6px 8px; }
+/* 汇总目标列表: 行 = 站点图标 + 名称 + 右侧登录灯(圆点复用导入导出的 .qw-backup-site-dot), 点行即发起.
+   行是 <button>(键盘可达/读屏可识别), 故需复位按钮默认外观 */
+.qw-summary-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  font-family: inherit;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--qw-text);
+}
+.qw-summary-item:hover { background: var(--qw-brand-tint); color: var(--qw-brand); }
+.qw-summary-item-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

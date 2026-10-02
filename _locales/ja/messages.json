@@ -1,0 +1,30 @@
+{
+  "extName": {
+    "message": "多问 AI",
+    "description": "Chrome ウェブストアとブラウザの拡張機能一覧に表示される拡張機能名。"
+  },
+  "extDescription": {
+    "message": "複数の AI に一斉質問。ワンクリック送信・話題切替・レイアウト変更。",
+    "description": "ストア掲載用の説明文（最大 132 文字程度）。"
+  },
+  "actionTitle": {
+    "message": "多问 AI を開く",
+    "description": "ツールバーアイコンのホバー時に表示されるツールチップ。"
+  },
+  "sidebarMenuOpen": {
+    "message": "サイドバーで AI を開く",
+    "description": "右クリックメニュー項目：AI サイドパネルを開く。"
+  },
+  "sidebarMenuAppend": {
+    "message": "AI チャットに追加",
+    "description": "右クリックメニュー項目（テキスト選択時）：選択をサイドバー AI の入力欄に追加。"
+  },
+  "sidebarCmdDesc": {
+    "message": "サイドバーを開く",
+    "description": "ブラウザのショートカット設定ページに表示されるコマンド説明。"
+  },
+  "appendSelectionCmdDesc": {
+    "message": "選択テキストをサイドバーに追加",
+    "description": "選択テキスト追加機能のショートカットコマンド説明。ブラウザのショートカット設定ページに表示。"
+  }
+}

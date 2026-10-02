@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+  <defs>
+    <linearGradient id="metaaiGrad" gradientUnits="userSpaceOnUse" x1="8.77" y1="0.94" x2="15.17" y2="22.85">
+      <stop offset="0" stop-color="#EB55FF"/>
+      <stop offset="1" stop-color="#4341FF"/>
+    </linearGradient>
+  </defs>
+  <g fill="url(#metaaiGrad)">
+    <ellipse cx="12.08" cy="3.82" rx="3.81" ry="2.53" transform="rotate(-124.88 12.08 3.82)"/>
+    <ellipse cx="18.44" cy="6.96" rx="3.81" ry="2.53" transform="rotate(-73.46 18.44 6.96)"/>
+    <ellipse cx="19.95" cy="13.9" rx="3.81" ry="2.53" transform="rotate(-22.03 19.95 13.9)"/>
+    <ellipse cx="15.48" cy="19.4" rx="3.81" ry="2.53" transform="rotate(29.4 15.48 19.4)"/>
+    <ellipse cx="8.38" cy="19.33" rx="3.81" ry="2.53" transform="rotate(80.83 8.38 19.33)"/>
+    <ellipse cx="4.01" cy="13.74" rx="3.81" ry="2.53" transform="rotate(132.26 4.01 13.74)"/>
+    <ellipse cx="5.66" cy="6.84" rx="3.81" ry="2.53" transform="rotate(183.69 5.66 6.84)"/>
+  </g>
+</svg>

@@ -1,0 +1,30 @@
+{
+  "extName": {
+    "message": "多问 AI",
+    "description": "扩展名称，显示在 Chrome 应用商店和浏览器扩展列表中。"
+  },
+  "extDescription": {
+    "message": "同时向多个 AI 发起提问，一键群发、切换话题、自定义布局。",
+    "description": "扩展简介，显示在应用商店列表页（上限约 132 字符）。"
+  },
+  "actionTitle": {
+    "message": "打开多问 AI",
+    "description": "工具栏图标的悬停提示文案。"
+  },
+  "sidebarMenuOpen": {
+    "message": "在侧边栏打开 AI",
+    "description": "右键菜单项：打开 AI 侧边栏。"
+  },
+  "sidebarMenuAppend": {
+    "message": "添加到 AI 对话",
+    "description": "右键菜单项（选中文字时）：把选区加入侧栏 AI 输入框。"
+  },
+  "sidebarCmdDesc": {
+    "message": "打开侧边栏",
+    "description": "快捷键命令说明，显示在浏览器快捷键设置页。"
+  },
+  "appendSelectionCmdDesc": {
+    "message": "划词填入侧边栏",
+    "description": "划词提问快捷键命令说明，显示在浏览器快捷键设置页。"
+  }
+}

@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; img-src https: data:; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'">
+  <title>PNG renderer</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #fff; }
+    #qwPngSource { display: flow-root; box-sizing: border-box; width: 800px; padding: 40px; }
+  </style>
+</head>
+<body>
+  <main id="qwPngSource"></main>
+  <script src="../../../chrome/src/vendor/html2pdf.bundle.js"></script>
+  <script src="../js/util/png-render.js"></script>
+</body>
+</html>

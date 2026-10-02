@@ -1,0 +1,30 @@
+{
+  "extName": {
+    "message": "多問 AI",
+    "description": "擴充功能名稱，顯示在 Chrome 線上應用程式商店與瀏覽器擴充功能清單中。"
+  },
+  "extDescription": {
+    "message": "同時向多個 AI 發起提問，一鍵群發、切換話題、自訂佈局。",
+    "description": "擴充功能簡介，顯示在商店清單頁（上限約 132 字元）。"
+  },
+  "actionTitle": {
+    "message": "打開多問 AI",
+    "description": "工具列圖示的滑鼠停留提示文字。"
+  },
+  "sidebarMenuOpen": {
+    "message": "在側邊欄開啟 AI",
+    "description": "右鍵選單項目：開啟 AI 側邊欄。"
+  },
+  "sidebarMenuAppend": {
+    "message": "加入 AI 對話",
+    "description": "右鍵選單項目（選取文字時）：把選取文字加入側欄 AI 輸入框。"
+  },
+  "sidebarCmdDesc": {
+    "message": "開啟側邊欄",
+    "description": "快捷鍵命令說明，顯示在瀏覽器快捷鍵設定頁。"
+  },
+  "appendSelectionCmdDesc": {
+    "message": "劃詞填入側邊欄",
+    "description": "劃詞提問快捷鍵命令說明，顯示在瀏覽器快捷鍵設定頁。"
+  }
+}

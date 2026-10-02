@@ -1,0 +1,760 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <title>多问 AI</title>
+  <link rel="stylesheet" href="../css/index.css">
+</head>
+
+<body>
+  <div id="update-banner" style="display:none;">
+    <span class="update-icon">🎉</span>
+    <div class="update-text">
+      <div class="update-title"><span data-i18n="update.found">发现新版本</span> <span id="updateBannerVersion"></span></div>
+      <div class="update-notes" id="updateBannerNotes"></div>
+    </div>
+    <div class="update-actions">
+      <button id="updateDownloadBtn" class="btn-update-primary" data-i18n="update.download">立即下载</button>
+      <button id="updateDismissBtn" class="btn-update-secondary" data-i18n="update.dismiss">稍后再说</button>
+    </div>
+  </div>
+
+  <div id="grid-container"></div>
+
+  <!-- 左侧站点栏已关闭: 切换会话改到底栏 -->
+  <div id="sidebar-index" class="sidebar-index" style="display: none;" hidden></div>
+
+  <!-- 常驻底栏: 会话/主题/历史/设置并入, 去掉左右悬浮控件 -->
+  <div id="control-panel" class="qw-composer">
+    <div id="attachmentPreview"></div>
+    <!-- 引用卡片 (逻辑见 quotes.js): 在 AI 面板里划词点「引用」进来的段落, 发送时拼成引用块放在提问前面.
+         @ 目标条(mention.js)会插在 quoteBar 与主行之间 (insertBefore #globalInput 的父级内) -->
+    <div id="quoteBar" class="qw-quote-bar"></div>
+    <div class="file-compatibility-banner" style="display: none;">
+      <span class="banner-icon">⚠️</span>
+      <span class="banner-text" data-i18n="input.fileBanner">每个AI站点对图片/文件的兼容和大小限制不尽相同，若站点不支持您上传的图片/文件格式或者大小超限，会发送失败，请留意。</span>
+    </div>
+    <div class="qw-composer-row">
+      <div class="qw-composer-left">
+        <button id="newSessionBtn" data-i18n="footer.newSession" data-i18n-attr="title:footer.newSession.title" title="各家回到首页，开始新话题 (Ctrl+Shift+R)">新话题</button>
+        <div class="input-meta-bar">
+          <button type="button" id="sessionSwitchBtn" class="input-meta-btn" data-i18n="session.btn" data-i18n-attr="title:session.btnTitle;aria-label:session.btnTitle" title="切换会话" aria-label="切换会话">切换会话</button>
+          <button type="button" id="presetsBtn" class="input-meta-btn" data-i18n="presets.btn" data-i18n-attr="title:presets.btnTitle" title="常用语（点击插入或管理）">常用语</button>
+          <button type="button" id="voiceInputBtn" class="input-meta-btn" style="display:none" hidden aria-hidden="true" tabindex="-1" data-i18n-attr="title:voice.btnTitle" title="语音输入（说话转文字）">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v1a7 7 0 0 1-14 0v-1"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </button>
+        </div>
+      </div>
+      <textarea id="globalInput" placeholder="输入内容... (Ctrl+Enter 发送, Enter 换行，可粘贴文件)"></textarea>
+      <div class="qw-composer-right">
+        <button id="attachBtn" class="qw-composer-icon-btn" data-i18n-attr="title:footer.attach.title;aria-label:footer.attach.aria" title="上传图片/文件（支持粘贴）" aria-label="上传附件">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path>
+          </svg>
+        </button>
+        <button id="globalSendBtn" data-i18n="footer.send">一键发送</button>
+        <span class="qw-composer-sep" aria-hidden="true"></span>
+        <div id="themeFab" class="qw-composer-icon-btn qw-theme-btn" role="button" tabindex="0" data-i18n-attr="title:fab.theme" title="切换日间/夜间 (设置里可改回跟随系统)">
+          <svg class="qw-theme-icon qw-icon-moon" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+            <path fill="currentColor" d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+          <svg class="qw-theme-icon qw-icon-sun" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+            stroke-width="2" stroke-linecap="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="4.2" fill="currentColor" stroke="none"/>
+            <line x1="12" y1="2.5" x2="12" y2="4.8"/><line x1="12" y1="19.2" x2="12" y2="21.5"/>
+            <line x1="2.5" y1="12" x2="4.8" y2="12"/><line x1="19.2" y1="12" x2="21.5" y2="12"/>
+            <line x1="5.3" y1="5.3" x2="6.9" y2="6.9"/><line x1="17.1" y1="17.1" x2="18.7" y2="18.7"/>
+            <line x1="18.7" y1="5.3" x2="17.1" y2="6.9"/><line x1="6.9" y1="17.1" x2="5.3" y2="18.7"/>
+          </svg>
+        </div>
+        <div id="historyBtn" class="qw-composer-icon-btn" role="button" tabindex="0" data-i18n-attr="title:fab.history" title="发送记录">🕒</div>
+        <div id="settingsBtn" class="qw-composer-icon-btn" role="button" tabindex="0" data-i18n-attr="title:fab.settings" title="页面设置">⚙</div>
+      </div>
+    </div>
+    <input type="file" id="attachFileInput" multiple style="display: none;" accept="*/*">
+  </div>
+
+  <div id="settings-panel" class="modal-panel" style="display: none;">
+    <div class="modal-header" id="settings-header">
+      <span data-i18n="settings.title">设置</span>
+      <span class="close-modal" id="closeSettingsX">×</span>
+    </div>
+    <div class="modal-tabs">
+      <div class="tab-btn active" data-tab="tab-pages" data-i18n="tab.pages">页面管理</div>
+      <div class="tab-btn" data-tab="tab-more" data-i18n="tab.general">通用设置</div>
+      <!-- 「功能」= 分组 / 会话 / 常用语 三个子页 (DOM id 沿用 tab-groups) -->
+      <div class="tab-btn" data-tab="tab-groups" data-i18n="tab.features">功能</div>
+      <div class="tab-btn" data-tab="tab-shortcuts" data-i18n="tab.shortcuts">快捷键</div>
+      <div class="tab-btn" data-tab="tab-backup" data-i18n="tab.backup">导入/导出</div>
+      <div class="tab-btn" data-tab="tab-about" data-i18n="tab.about">关于</div>
+    </div>
+
+    <!-- 选项卡 1: 页面管理 (三列: 已选站点 / 国内站点 / 国外站点) -->
+    <!-- 第一列 = 当前已开启的站点, 可拖动排序、点 × 移除; 第二/三列 = 国内/国外站点目录, 点 + 添加, 已选后原位置点 − 移除. -->
+    <div id="tab-pages" class="tab-content active">
+      <!-- 站点搜索: 实时过滤下方三列(已选/国内/国际)的站点, 25 个站点里快速定位 -->
+      <div class="pages-search">
+        <svg class="pages-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><path d="m21 21-4.3-4.3"></path></svg>
+        <input type="text" id="pagesSearchInput" data-i18n-attr="placeholder:pages.search" placeholder="搜索站点…">
+      </div>
+      <div class="pages-columns">
+        <div class="pages-col">
+          <div class="pages-col-title" data-i18n="pages.selectedTitle">已选站点</div>
+          <!-- 批量操作固定在列表上方: 反选 / 清空只改编辑态, 点"应用"才生效 -->
+          <div class="pages-bulk-row">
+            <button id="invertSelectedBtn" type="button" class="pages-bulk-btn" data-i18n="pages.invert" data-i18n-attr="title:pages.invert">反选</button>
+            <button id="clearSelectedBtn" type="button" class="pages-bulk-btn pages-bulk-danger" data-i18n="pages.clear" data-i18n-attr="title:pages.clear">清空</button>
+          </div>
+          <!-- 列表 + "添加为分组"按钮一起放进滚动容器: settings-list 按内容自适应高度, 按钮紧跟其后(而非被顶到列底) -->
+          <div class="pages-col-body scroll-content">
+            <div id="settings-list"></div>
+            <!-- 用当前"已选站点"新建一个分组 (跳到分组页命名) -->
+            <button id="addSelectedAsGroupBtn" type="button" class="groups-add-btn" data-i18n="pages.addAsGroup">+ 添加为分组</button>
+          </div>
+        </div>
+        <div class="pages-col">
+          <div class="pages-col-title" data-i18n="pages.domesticTitle">国内站点</div>
+          <div id="catalog-domestic" class="pages-col-body scroll-content"></div>
+        </div>
+        <div class="pages-col">
+          <div class="pages-col-title" data-i18n="pages.globalTitle">国外站点</div>
+          <div id="catalog-global" class="pages-col-body scroll-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 选项卡 2: 通用设置 -->
+    <div id="tab-more" class="tab-content">
+      <div class="scroll-content">
+        <!-- 每个分类内的设置项按【英文名称字典序】排列(改/增设置务必维持此序; 分类标题本身不排序, 按当前顺序放);
+             类别标题用 .settings-section-title. 四个分类及各自的项(括号内为排序依据的英文名):
+               系统 System: Appearance(外观) / Language(语言)
+               应用布局 App layout: Layout mode(站点排列方式) / Layout scroll step(左右切换单次滚动站点数, 仅单行时显示) /
+                 Max columns per row(每行最多列数) / Page spacing(页面左右间距)
+               站点布局 Site layout: Automatically collapse site sidebars on entry(进入站点后自动收起左侧栏) /
+                 Hide the input box in conversations(隐藏对话中的输入框) / In-page timeline(页面内时间线) /
+                 Quote selected text(划词引用) / Show top toolbar(显示顶部工具栏)
+               会话 Sessions: Pin the @-mentioned session(置顶被@的会话) / Start a new session after switching groups(切换分组后打开新会话) /
+                 Start a new session on each launch(每次启动打开新会话)
+               数据 Data (仅 PC 版): Clear cache and site data(清除缓存和网站数据) -->
+        <div class="settings-section-title" data-i18n="general.catSystem">系统</div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.theme">外观</span>
+          </div>
+          <select id="themeSelect" class="qw-select">
+            <option value="auto" data-i18n="theme.auto">跟随系统</option>
+            <option value="light" data-i18n="theme.light">浅色</option>
+            <option value="dark" data-i18n="theme.dark">深色</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.language">语言</span>
+          </div>
+          <select id="langSelect" class="qw-select">
+            <option value="auto" data-i18n="lang.auto">跟随系统</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="zh-TW">繁體中文</option>
+            <option value="en">English</option>
+            <option value="ja">日本語</option>
+            <option value="hi">हिन्दी</option>
+            <option value="es">Español</option>
+            <option value="fr">Français</option>
+            <option value="ru">Русский</option>
+          </select>
+        </div>
+        <div class="settings-section-title" data-i18n="general.catLayout">应用布局</div>
+        <!-- 站点排列方式 (Layout mode): 多行 = 超过列数就换到下一行(默认, 整页纵向滚);
+             单行 = 所有站点排成一行, 一屏只看得到"每行最多列数"个, 其余在屏外, 靠界面边缘箭头 / Ctrl+←/→ 左右滚动. 见 pager.js -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.layoutMode">站点排列方式</span>
+          </div>
+          <select id="layoutModeSelect" class="qw-select">
+            <option value="wrap" data-i18n="layout.wrap">多行</option>
+            <option value="paged" data-i18n="layout.paged">单行</option>
+          </select>
+        </div>
+        <!-- 左右切换单次滚动站点数 (Layout scroll step, 字典序紧跟 Layout mode, 也正好挨着它所依附的那一项):
+             仅"单行"时才显示(settings.js 按 layoutModeSelect 实时显隐); 可选值 1..当前列数, 随列数下拉框实时增减. -->
+        <div class="setting-item" id="scrollStepItem">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.scrollStep">左右切换单次滚动站点数</span>
+          </div>
+          <select id="scrollStepSelect" class="qw-select">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.cols">每行最多列数</span>
+          </div>
+          <select id="colCountSelect" class="qw-select">
+            <option value="2" data-i18n="general.cols2">2 列</option>
+            <option value="3" data-i18n="general.cols3">3 列</option>
+            <option value="4" data-i18n="general.cols4">4 列</option>
+            <option value="5" data-i18n="general.cols5">5 列</option>
+          </select>
+        </div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.gap">页面左右间距</span>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <input type="range" id="frameGapSlider" min="0" max="30" step="1"
+              style="width: 140px; cursor: pointer;">
+            <span id="frameGapValue" class="qw-setting-hint">5 px</span>
+          </div>
+        </div>
+        <div class="settings-section-title" data-i18n="general.catSiteLayout">站点布局</div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.autoCollapseSiteSidebar">进入站点后自动收起左侧栏</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="autoCollapseSiteSidebarToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <!-- 隐藏对话中的输入框: 开 = 进入对话后把该站输入框折叠隐藏, 只留 App 统一输入栏(新对话/首页不藏); 关(默认) = 照常显示. 注入器 QwInject.setHideInput 读 hide_site_input + 站点 actions.hideInput -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.hideSiteInput">隐藏对话中的输入框</span>
+            <kbd class="qw-setting-shortcut" id="hideSiteInputShortcutLabel">Ctrl+Shift+H</kbd>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="hideSiteInputToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <!-- 显示全局时间线: 开(默认)=窗口右缘那条圆点 minimap(统一时间线); 关=整条不显示、右缘不留 gutter, 也不再向各面板发反查请求。timeline-panel.js 读 show_global_timeline -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.showGlobalTimeline">显示全局时间线（窗口右缘圆点条）</span>
+            <kbd class="qw-setting-shortcut" id="globalTimelineShortcutLabel">Ctrl+Alt+G</kbd>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="showGlobalTimelineToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <!-- 页面内时间线: 开=每个面板右侧再挂一条 per-site 节点条(默认关, 右侧统一时间线已覆盖); timeline-log.js 据 qw_inpage_timeline 决定发送时是否推给各 frame -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.inpageTimeline">页面内时间线（面板右侧节点条）</span>
+            <kbd class="qw-setting-shortcut" id="inpageTimelineShortcutLabel">Ctrl+Alt+P</kbd>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="inpageTimelineToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <!-- 划词引用: 开(默认)=在 AI 页面里选中文字时浮出「引用 | @」按钮, 点了把那段话作为引用卡片放进一键发送输入框;
+             关=不浮出. 按钮本体 inject/quote-button.js, 卡片 quotes.js; 开关经平台桥推给各站点帧(state.js getQuoteSelection) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.quoteSelection">划词引用（在 AI 页面中选中文字时显示「引用」按钮）</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="quoteSelectionToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.showTopToolbar">显示顶部工具栏</span>
+            <kbd class="qw-setting-shortcut" id="topToolbarShortcutLabel">Ctrl+Alt+T</kbd>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="showTopToolbarToggle" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="settings-section-title" data-i18n="general.catDialog">会话</div>
+        <!-- 置顶被@的会话: 开 = @ 某站点时把它移到最前; 关(默认) = 不动排序. mention.js activateMentionedSite 读 pin_mentioned_ai -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.pinMentioned">置顶被@的会话</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="pinMentionedToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <!-- 切换分组后打开新会话: 开(默认) = 切换分组时该分组所有成员开新会话(含切换前已打开的成员); 关 = 已打开的成员保持原样. group-switch.js apply 读 group_switch_new_session -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.groupSwitchNewSession">切换分组后打开新会话</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="groupSwitchNewSessionToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.newSession">每次启动打开新会话</span>
+          </div>
+          <label class="switch">
+            <input type="checkbox" id="openNewSessionToggle">
+            <span class="slider"></span>
+          </label>
+        </div>
+        <!-- 数据: 清除缓存和网站数据 = 把当前 Profile 的内置浏览器资料清成全新(含登录态)。仅 PC 版有,
+             默认隐藏, 由 electron/src/js/profiles.js 显示并绑定(扩展端跑在用户自己的浏览器里, 不提供)。
+             标题与行不包 wrapper: 包了标题就成 :first-child, 被 .settings-section-title:first-child 去掉上边距 -->
+        <div class="settings-section-title" id="siteDataTitle" style="display: none;" data-i18n="general.catData">数据</div>
+        <div class="setting-item" id="siteDataSettings" style="display: none; cursor: default; gap: 12px;">
+          <div class="item-left" style="flex-direction: column; align-items: flex-start; gap: 3px;">
+            <span class="setting-label" data-i18n="siteData.clear">清除缓存和网站数据</span>
+            <span class="qw-backup-sub" data-i18n="siteData.clearSub">清除所有站点的登录状态、Cookie、本地存储和缓存，相当于重置内置浏览器</span>
+          </div>
+          <button type="button" id="clearSiteDataBtn" class="qw-cmd-edit" style="flex-shrink: 0;" data-i18n="siteData.clearBtn">清除…</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 选项卡: 功能 (DOM id 沿用 tab-groups). 内部三个子页 (分段切换, 样式复用导入导出页的 .qw-backup-seg; 切换逻辑见 settings.js showGroupsSub):
+         「分组」= 分组管理 (pending 模型, 点"应用"才落盘); 「会话」= 保存的会话管理 (重命名/恢复/删除/查看网址, 即时生效, 同导入导出不受"应用/取消"约束);
+         「常用语」= 提示词库 (pending 模型, 同分组; 原独立的 tab-presets 选项卡并入此处).
+         本块在 HTML 里紧跟 tab-more, 与顶部选项卡按钮的顺序保持一致. -->
+    <div id="tab-groups" class="tab-content">
+      <div class="qw-backup-seg qw-groups-seg">
+        <button type="button" class="qw-backup-seg-btn active" data-groups-sub="groups" data-i18n="groups.subGroups">分组</button>
+        <button type="button" class="qw-backup-seg-btn" data-groups-sub="sessions" data-i18n="groups.subSessions">会话</button>
+        <button type="button" class="qw-backup-seg-btn" data-groups-sub="presets" data-i18n="presets.title">常用语</button>
+        <button type="button" class="qw-backup-seg-btn" data-groups-sub="summary" data-i18n="groups.subSummary">一键总结</button>
+        <button type="button" class="qw-backup-seg-btn" data-groups-sub="profiles" style="display: none;">Profile 管理</button>
+      </div>
+
+      <!-- PC-only: profiles.js manages browser profiles. -->
+      <div id="qw-profiles-settings" class="qw-groups-subpage" data-groups-sub="profiles" style="display: none;"></div>
+
+      <!-- 子页: 分组 (左: 分组列表 + 新建; 右: 选中分组的编辑器 = 改名 + 勾选成员站点). -->
+      <!-- 分组是"AI 预设": 点底部/侧栏的"切换分组"按钮或输入框打 /, 用分组成员覆盖当前开启集 (见 group-switch.js / mention.js). -->
+      <!-- 编辑只改内存副本 pendingGroups, 点"应用"才落盘 (QwState.saveGroups), "取消"自然丢弃. -->
+      <div class="qw-groups-subpage" data-groups-sub="groups">
+        <div class="groups-intro">
+          <span class="groups-intro-icon">💡</span>
+          <!-- data-i18n-html: 文案里内联了"切换分组"按钮的文件夹图标(与实际按钮一致) -->
+          <span data-i18n-html="groups.intro">把常用的几个 AI 存成一组预设。之后点底部或左侧栏的 <svg class="groups-intro-svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 17a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3.9a2 2 0 0 1-1.69-.9l-.81-1.2a2 2 0 0 0-1.67-.9H8a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2Z"></path><path d="M2 8v11a2 2 0 0 0 2 2h14"></path></svg>「切换分组」按钮，或在输入框里输入 /，即可选一个分组，把当前开启的 AI 一键替换为组内成员。</span>
+        </div>
+        <div class="pages-columns">
+          <div class="pages-col">
+            <div class="pages-col-title" data-i18n="groups.listTitle">我的分组</div>
+            <div id="groups-list" class="pages-col-body scroll-content"></div>
+            <button id="addGroupBtn" type="button" class="groups-add-btn" data-i18n="groups.add">+ 新建分组</button>
+          </div>
+          <div class="pages-col">
+            <div class="pages-col-title" data-i18n="groups.editorTitle">分组内容</div>
+            <div id="group-editor" class="pages-col-body scroll-content"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 子页: 会话 (保存的会话管理). 行 = 名称(点击可直接改) + "N 个 AI"+头像 + 恢复/删除; 点击行展开各站点的对话网址.
+           渲染与动作在 settings.js (renderSessionsList), 保存/恢复的核心逻辑复用 session-switch.js (QwSessionSwitch). -->
+      <div class="qw-groups-subpage" data-groups-sub="sessions" style="display: none;">
+        <div class="groups-intro">
+          <span class="groups-intro-icon">💡</span>
+          <span data-i18n="sessionMgr.intro">把「当前开启的 AI ＋ 各自所在的对话」存成一条会话，之后可一键恢复现场。输入面板底部的 💾 按钮也能快速保存/恢复。</span>
+        </div>
+        <div class="pages-columns">
+          <div class="pages-col">
+            <div class="pages-col-title" data-i18n="session.title">保存的会话</div>
+            <div id="sessions-list" class="pages-col-body scroll-content"></div>
+            <button id="sessionsSaveBtn" type="button" class="groups-add-btn">＋ <span data-i18n="session.saveCurrent">保存当前会话</span></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 子页: 常用语 (提示词库). 存储逻辑见 prompt-presets.js(window.QwPresets), settings.js 渲染可编辑行.
+           与分组子页同为 pending 模型 —— 编辑只改内存 pendingPresets, 点底部"应用"才 QwPresets.save 落盘, "取消"丢弃. -->
+      <div class="qw-groups-subpage" data-groups-sub="presets" style="display: none;">
+        <div class="groups-intro">
+          <span class="groups-intro-icon">💡</span>
+          <span data-i18n="presets.pageIntro">在这里管理常用语。它们会出现在输入框的「常用语」弹层，也能在输入框输入 / 后快速选用（快捷键 /e 列出全部）。</span>
+        </div>
+        <div class="pages-columns">
+          <div class="pages-col">
+            <div class="pages-col-title" data-i18n="presets.title">常用语</div>
+            <div id="presets-list" class="pages-col-body scroll-content"></div>
+            <button id="addPresetBtn" type="button" class="groups-add-btn" data-i18n="presets.addRow">+ 添加常用语</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 子页: 一键总结 (自定义「AI 一键总结」发给目标 AI 的那段提示词). 存储 qw_summary_prompt (QwState.get/saveSummaryPrompt),
+           取用在 answers.js(buildSummaryPrompt): 写了 {{answers}} 就把各家回答填到那个位置, 没写则接在末尾.
+           留空 = 用内置默认提示词(随界面语言走). 同分组/常用语为 pending 模型 —— 编辑只改内存, 点"应用"才落盘, "取消"丢弃. -->
+      <div class="qw-groups-subpage" data-groups-sub="summary" style="display: none;">
+        <div class="groups-intro">
+          <span class="groups-intro-icon">💡</span>
+          <span data-i18n="answers.promptIntro">点「AI 一键总结」时，各家的最新回答会连同这段提示词一起发给你选的那个 AI。想换个总结口味（比如输出表格、只挑分歧），改这里即可；留空则用内置默认提示词。</span>
+        </div>
+        <div class="pages-columns">
+          <div class="pages-col">
+            <div class="pages-col-title" data-i18n="answers.promptTitle">一键总结提示词</div>
+            <div class="qw-summary-prompt-body">
+              <textarea id="summaryPromptInput" class="qw-summary-prompt-input" data-i18n-attr="placeholder:answers.promptPlaceholder" placeholder="留空则使用内置默认提示词"></textarea>
+              <div class="qw-summary-prompt-foot">
+                <span class="qw-summary-prompt-hint" data-i18n="answers.promptVarHint">可用 {{answers}} 指定各家回答插入的位置；不写则自动接在提示词末尾。</span>
+                <button type="button" id="summaryPromptResetBtn" class="qw-cmd-edit" data-i18n="answers.promptReset">恢复默认</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 选项卡: 快捷键. 分类标题用 .settings-section-title; 每个分类内的项按【英文名称字典序】排列
+         (改/增快捷键务必维持此序; 分类标题本身不排序, 按当前顺序放). 六个分类及各自的项(括号内为排序依据的英文名):
+           输入 Input: Input/close(输入/关闭) / Send shortcut(发送快捷键)
+           应用布局 App layout: Reorder sites(调整站点顺序, Ctrl+Alt+拖动) / Scroll sites left/right(左右切换站点, 仅单行) /
+             Scroll sites up/down one row(上下滚动一行, 仅多行) / Select a site(选中站点)
+           站点布局 Site layout: Collapse/expand the site sidebar(收起/展开站点左侧栏, 入口暂时屏蔽) /
+             Fullscreen(全屏模式) / Hide the input box in conversations(隐藏对话中的输入框) /
+             Show top toolbar(显示顶部工具栏)
+           会话 Sessions: New session(新建会话)
+           时间线 Timeline: Show/hide global timeline(显示/隐藏全局时间线) / Show/hide in-page timeline(显示/隐藏页面内时间线)
+           侧边栏 Sidebar: Open sidebar(打开侧边栏) / Selection to sidebar(划词填入侧栏) /
+             Switch sidebar site(切换侧栏站点); 仅插件版显示 -->
+    <div id="tab-shortcuts" class="tab-content">
+      <div class="scroll-content">
+        <div class="settings-section-title" data-i18n="shortcut.catInput">输入</div>
+        <!-- 输入/关闭: App 内快捷键, 点击后按组合键自定义 (全平台生效) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.inputToggle">输入/关闭</span>
+          </div>
+          <button type="button" id="inputToggleCapture" class="qw-key-capture">Ctrl+I</button>
+        </div>
+        <!-- 发送快捷键: 从通用设置移过来 -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="general.shortcut">发送快捷键</span>
+          </div>
+          <select id="sendShortcutSelect" class="qw-select">
+            <option value="Enter">Enter</option>
+            <option value="Ctrl+Enter">Ctrl+Enter</option>
+          </select>
+        </div>
+        <div class="settings-section-title" data-i18n="general.catLayout">应用布局</div>
+        <!-- 调整站点顺序: 按住 Ctrl+Alt 再用左键拖动面板, 写死只读(是手势不是按键, 没法捕获自定义). 关掉"显示顶部工具栏"
+             后这是唯一的排序方式; 焦点在 AI 页面内也生效(两端各自转发修饰键状态), 见 frame-drag.js 的"修饰键拖拽"一节. -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.reorderSites">调整站点顺序</span>
+          </div>
+          <div class="qw-cmd-shortcut">
+            <span class="qw-cmd-key" data-i18n="shortcut.reorderSitesKey">Ctrl + Alt + 左键拖动</span>
+          </div>
+        </div>
+        <!-- 左右切换站点: Ctrl+←/→, 写死只读. 仅在"站点排列方式 = 单行"时生效(见 pager.js);
+             焦点在工作台输入框里时放行给"按词移动光标", 在 AI 页面内则一律拦截转发(否则站点自动聚焦输入框会让它永远不生效). -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.switchPage">左右切换站点（单行排列时）</span>
+          </div>
+          <div class="qw-cmd-shortcut">
+            <span class="qw-cmd-key">Ctrl + ← / →</span>
+          </div>
+        </div>
+        <!-- 上下滚动一行: Ctrl+↑/↓, 写死只读. 仅在"站点排列方式 = 多行"(默认)且不止一行时生效(见 row-scroll.js);
+             与上面那条是同一取舍的纵向版, 两种排列互斥, 同一时刻只有一组方向键被占用. -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.scrollRow">上下滚动一行（多行排列时）</span>
+          </div>
+          <div class="qw-cmd-shortcut">
+            <span class="qw-cmd-key">Ctrl + ↑ / ↓</span>
+          </div>
+        </div>
+        <!-- 选中站点滚动: Ctrl+Alt+方向键, 写死只读. 两种排列下都生效(与上面两条不同) ——
+             选中后边框高亮、焦点进入该站点, 再用【原生】↑/↓ / PageUp/PageDown 滚它的内容, Ctrl+I 收回焦点.
+             带 Alt 是刻意的: 上面两条 Ctrl+方向键都显式排除了 Alt, 故三者互不打架(见 site-focus.js). -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.focusSite">选中站点</span>
+          </div>
+          <div class="qw-cmd-shortcut">
+            <span class="qw-cmd-key">Ctrl + Alt + ← ↑ ↓ →</span>
+          </div>
+        </div>
+        <div class="settings-section-title" data-i18n="general.catSiteLayout">站点布局</div>
+        <!-- 暂停开放站点侧栏手动切换，待全站适配后恢复入口及两端按键处理。
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.siteSidebar">收起/展开站点左侧栏</span>
+          </div>
+          <button type="button" id="siteSidebarCapture" class="qw-key-capture">Ctrl+Alt+B</button>
+        </div>
+        -->
+        <!-- 全屏模式: 把当前那一格切进/切出全屏 (全平台生效, AI 页面内也生效, 默认 Ctrl+Alt+F).
+             目标 = 已全屏的那格 > 选中的那格 > 当前屏中间那格, 见 site-focus.js 的 toggleFullscreen. -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.fullscreen">全屏模式</span>
+          </div>
+          <button type="button" id="fullscreenCapture" class="qw-key-capture">Ctrl+Alt+F</button>
+        </div>
+        <!-- 隐藏对话中的输入框: 一键翻转通用设置里的同名开关 (全平台生效, AI 页面内也生效, 默认 Ctrl+Shift+H) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.hideInput">隐藏对话中的输入框</span>
+          </div>
+          <button type="button" id="hideInputCapture" class="qw-key-capture">Ctrl+Shift+H</button>
+        </div>
+        <!-- 显示顶部工具栏: 一键翻转通用设置里的同名开关 (全平台生效, AI 页面内也生效, 默认 Ctrl+Alt+T) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.topToolbar">显示顶部工具栏</span>
+          </div>
+          <button type="button" id="topToolbarCapture" class="qw-key-capture">Ctrl+Alt+T</button>
+        </div>
+        <div class="settings-section-title" data-i18n="general.catDialog">会话</div>
+        <!-- 新建会话: App 内快捷键, 点击后按组合键自定义 (全平台生效, 默认 Ctrl+Shift+R) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.newSession">新建会话</span>
+          </div>
+          <button type="button" id="newSessionCapture" class="qw-key-capture">Ctrl+Shift+R</button>
+        </div>
+        <div class="settings-section-title" data-i18n="shortcut.catTimeline">时间线</div>
+        <!-- 显示/隐藏全局时间线: 一键翻转通用设置里的"显示全局时间线"(窗口右缘圆点条) (全平台生效, AI 页面内也生效, 默认 Ctrl+Alt+G) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.globalTimeline">显示/隐藏全局时间线</span>
+          </div>
+          <button type="button" id="globalTimelineCapture" class="qw-key-capture">Ctrl+Alt+G</button>
+        </div>
+        <!-- 显示/隐藏页面内时间线: 一键翻转通用设置里的"页面内时间线"(面板右侧节点条) (全平台生效, AI 页面内也生效, 默认 Ctrl+Alt+P) -->
+        <div class="setting-item">
+          <div class="item-left">
+            <span class="setting-label" data-i18n="shortcut.inpageTimeline">显示/隐藏页面内时间线</span>
+          </div>
+          <button type="button" id="inpageTimelineCapture" class="qw-key-capture">Ctrl+Alt+P</button>
+        </div>
+        <!-- 打开侧边栏 / 划词填入 / 切换侧栏站点: Chrome commands, JS 改不了键位 → 只读显示当前键 + 跳浏览器快捷键页. 仅插件版显示. -->
+        <div id="shortcutSidebarSection" style="display: none;">
+          <div class="settings-section-title" data-i18n="shortcut.catSidebar">侧边栏</div>
+          <div class="setting-item" id="shortcutOpenSidebarItem">
+            <div class="item-left">
+              <span class="setting-label" data-i18n="shortcut.openSidebar">打开侧边栏</span>
+            </div>
+            <div class="qw-cmd-shortcut">
+              <span class="qw-cmd-key" id="openSidebarKey">—</span>
+              <button type="button" class="qw-cmd-edit" data-cmd-edit data-i18n="shortcut.editInBrowser">在浏览器中修改</button>
+            </div>
+          </div>
+          <div class="setting-item" id="shortcutSelectionItem">
+            <div class="item-left">
+              <span class="setting-label" data-i18n="shortcut.selection">划词填入侧栏</span>
+            </div>
+            <div class="qw-cmd-shortcut">
+              <span class="qw-cmd-key" id="selectionKey">—</span>
+              <button type="button" class="qw-cmd-edit" data-cmd-edit data-i18n="shortcut.editInBrowser">在浏览器中修改</button>
+            </div>
+          </div>
+          <!-- 切换侧栏站点: Ctrl+←/→, 写死只读(暂不提供修改). 仅插件版侧栏功能; 焦点在面板由 sidepanel.js 处理,
+               焦点在 AI iframe 内由 content.js 拦 Ctrl+方向键转发. -->
+          <div class="setting-item" id="shortcutSwitchSiteItem">
+            <div class="item-left">
+              <span class="setting-label" data-i18n="shortcut.switchSite">切换侧栏站点</span>
+            </div>
+            <div class="qw-cmd-shortcut">
+              <span class="qw-cmd-key">Ctrl + ← / →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 选项卡: 导入导出 (备份/迁移). 逻辑见 shared/src/js/ui/backup.js (window.QwBackup); settings.js 渲染站点勾选并绑事件.
+         导出/导入是即时动作, 不受面板底部"应用/取消"约束. -->
+    <div id="tab-backup" class="tab-content">
+      <div class="scroll-content qw-backup-page">
+        <!-- 导出/导入 分段切换: 两个子页 (settings.js 绑点击切换 .qw-backup-subpage; 复用 backup.exportTitle/importTitle 文案) -->
+        <div class="qw-backup-seg">
+          <button type="button" class="qw-backup-seg-btn active" data-backup-sub="export" data-i18n="backup.exportTitle">导出</button>
+          <button type="button" class="qw-backup-seg-btn" data-backup-sub="import" data-i18n="backup.importTitle">导入</button>
+        </div>
+
+        <!-- 子页: 导出 -->
+        <div class="qw-backup-subpage" data-backup-sub="export">
+          <!-- 应用设置: 开关行, 与"通用设置"里的布尔项同款卡片+switch -->
+          <div class="qw-backup-row">
+            <div class="qw-backup-item-left">
+              <span class="setting-label" data-i18n="backup.inclSettings">应用设置</span>
+              <span class="qw-backup-sub" data-i18n="backup.inclSettingsSub">站点排序 / 分组 / 外观 / 语言 / 快捷键</span>
+            </div>
+            <label class="switch">
+              <input type="checkbox" id="backupInclSettings" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <!-- 登录态: 一张卡片, 内含头部(标题+全选)、可选检测行、站点网格 -->
+          <div class="qw-backup-card">
+            <div class="qw-backup-card-head">
+              <span class="setting-label" data-i18n="backup.inclCookies">登录态（Cookie）</span>
+              <span class="qw-backup-selall">
+                <a href="javascript:void(0)" id="backupSelAll" data-i18n="backup.selectAll">全选</a>
+                <span class="qw-backup-sep">·</span>
+                <a href="javascript:void(0)" id="backupSelNone" data-i18n="backup.selectNone">全不选</a>
+                <span class="qw-backup-sep">·</span>
+                <a href="javascript:void(0)" id="backupSelInvert" data-i18n="backup.selectInvert">反选</a>
+              </span>
+            </div>
+            <div id="backupDetectRow" class="qw-backup-detect-row" style="display: none;">
+              <button type="button" id="backupDetectBtn" class="qw-cmd-edit" data-i18n="backup.detect">检测各站点登录状态</button>
+              <span class="qw-backup-detect-hint" data-i18n="backup.detectHint">（需一次性授权读取 Cookie）</span>
+            </div>
+            <div id="backupSiteList" class="qw-backup-site-list"><!-- settings.js 填充站点勾选框(带登录状态圆点) --></div>
+          </div>
+          <div class="qw-backup-actions">
+            <button type="button" id="backupExportBtn" class="btn btn-apply" data-i18n="backup.exportBtn">导出到文件</button>
+          </div>
+          <div class="qw-backup-warn" data-i18n="backup.warn">⚠️ 导出文件含登录凭证（等于账号），请妥善保管、切勿分享给他人。</div>
+        </div>
+
+        <!-- 子页: 导入 -->
+        <div class="qw-backup-subpage" data-backup-sub="import" style="display: none;">
+          <div class="qw-backup-card">
+            <div class="qw-backup-hint" data-i18n="backup.importHint">从备份文件恢复设置与登录态。导入登录态会覆盖同站点的现有 Cookie。</div>
+            <button type="button" id="backupPickBtn" class="qw-cmd-edit" data-i18n="backup.pickFile">选择文件…</button>
+            <input type="file" id="backupFileInput" accept="application/json,.json" style="display: none;">
+            <div id="backupImportOptions" class="qw-backup-import-opts" style="display: none;">
+              <div id="backupFileInfo" class="qw-backup-fileinfo"></div>
+              <label class="qw-backup-check">
+                <input type="checkbox" id="backupImpSettings">
+                <span data-i18n="backup.impSettings">导入应用设置</span>
+              </label>
+              <!-- 登录态: 按文件里含登录态的站点列出, 勾选要导入哪些(与导出页对称); settings.js 填充 -->
+              <div id="backupImportSitesWrap" class="qw-backup-card qw-backup-import-sites" style="display: none;">
+                <div class="qw-backup-card-head">
+                  <span class="setting-label" data-i18n="backup.impSitesTitle">导入登录态（勾选站点）</span>
+                  <span class="qw-backup-selall">
+                    <a href="javascript:void(0)" id="backupImpSelAll" data-i18n="backup.selectAll">全选</a>
+                    <span class="qw-backup-sep">·</span>
+                    <a href="javascript:void(0)" id="backupImpSelNone" data-i18n="backup.selectNone">全不选</a>
+                    <span class="qw-backup-sep">·</span>
+                    <a href="javascript:void(0)" id="backupImpSelInvert" data-i18n="backup.selectInvert">反选</a>
+                  </span>
+                </div>
+                <div id="backupImportSiteList" class="qw-backup-site-list"></div>
+              </div>
+              <div class="qw-backup-actions">
+                <button type="button" id="backupImportBtn" class="btn btn-apply" data-i18n="backup.importBtn">开始导入</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 关于: 仅保留产品名 -->
+    <div id="tab-about" class="tab-content">
+      <div class="scroll-content qw-about-subpage qw-about" data-about-sub="about">
+        <div class="qw-about-name" data-i18n="about.name">多问 AI</div>
+      </div>
+    </div>
+
+    <div class="settings-footer">
+      <div style="display: flex; gap: 10px; margin-left: auto;">
+        <button id="cancelSettingsBtn" class="btn btn-cancel" data-i18n="btn.cancel">取消</button>
+        <button id="applySettingsBtn" class="btn btn-apply" data-i18n="btn.apply">应用</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="history-panel" class="modal-panel" style="display: none;">
+    <div class="modal-header" id="history-header">
+      <span>
+        <span data-i18n="history.title">发送记录</span>
+        <span id="clearHistoryBtn" class="clear-history-btn" data-i18n="history.clear" data-i18n-attr="title:history.clear.title" title="清空所有记录">[清空]</span>
+      </span>
+      <span class="close-modal" id="closeHistoryX">×</span>
+    </div>
+    <div class="history-search-bar">
+      <input type="text" id="historySearchInput" data-i18n-attr="placeholder:history.search.placeholder" placeholder="搜索记录 (内容 / 附件名)">
+    </div>
+    <div id="history-list" class="scroll-content">
+    </div>
+  </div>
+
+  <!-- 共享模块 (路径相对于 shared/src/html/index.html 这个 HTML 文件位置) -->
+  <!-- configs-loader.js 必须最前: 它同步加载 sites_config.json 到 window.rawUrls, 后续脚本依赖它 -->
+  <script src="../js/configs-loader.js"></script>
+  <script src="../js/util/utils.js"></script>
+  <script src="../js/util/login-context.js"></script>
+  <script src="../js/inject/injector_text.js"></script>
+  <script src="../js/inject/injector_file.js"></script>
+  <script src="../js/inject/injector.js"></script>
+
+  <!-- 通用 UI 层 (顺序: 无依赖的 -> 依赖前面的). 平台 index.js 末尾调 QwGrid.bind + render -->
+  <!-- state.js 依赖 window.rawUrls; 其它依赖 window.QwState / QwDraggable / QwInputPanel / QwFrameControls -->
+  <!-- i18n.js 放最前: 启动即翻译静态 HTML, 后续模块的动态文案靠 window.QwI18n.t() -->
+  <script src="../js/ui/i18n.js"></script>
+  <script src="../js/ui/state.js"></script>
+  <script src="../js/ui/draggable.js"></script>
+  <script src="../js/ui/branding.js"></script>
+  <script src="../js/ui/input-panel.js"></script>
+  <!-- focus-guard: 新建会话后站点 frame 边加载边 autofocus 会把键盘焦点从一键发送输入框抢走, 这里守住 -->
+  <script src="../js/ui/focus-guard.js"></script>
+  <!-- fab-drag: 右下角悬浮按钮组的拖动 + 右缘吸附; 必须排在 input-panel.js 之后(折叠态先落定, 整组高度才准) -->
+  <script src="../js/ui/fab-drag.js"></script>
+  <script src="../js/ui/attachments.js"></script>
+  <!-- prompt-presets: 常用语/提示词库 (依赖 QwI18n; 自包含, 仅用 #presetsBtn/#globalInput) -->
+  <script src="../js/ui/prompt-presets.js"></script>
+  <script src="../js/ui/history.js"></script>
+  <script src="../js/ui/sidebar.js"></script>
+  <!-- sidebar-drag: 按住折叠箭头拖整条侧栏, 松手横向吸回左缘、纵向留在放手的高度 (与 fab-drag 对称) -->
+  <script src="../js/ui/sidebar-drag.js"></script>
+  <script src="../js/ui/frame-controls.js"></script>
+  <script src="../js/util/answer-document.js"></script>
+  <script src="../js/ui/answer-export.js"></script>
+  <!-- frame-drag: 拖面板顶部功能栏调整站点顺序 (只改 wrapper.style.order + 落 page_order, 面板零重载) -->
+  <script src="../js/ui/frame-drag.js"></script>
+  <script src="../js/ui/grid.js"></script>
+  <!-- pager.js: 站点"单行"排列 (边缘箭头 / Ctrl+←/→ 横向滚动); grid.js render() 里回调它接管布局 -->
+  <script src="../js/ui/pager.js"></script>
+  <!-- row-scroll.js: 站点"多行"排列 (默认) 下 Ctrl+↑/↓ 一次滚一整行; 与 pager.js 按排列方式二选一 -->
+  <script src="../js/ui/row-scroll.js"></script>
+  <!-- site-focus.js: Ctrl+Alt+方向键选中某个站点(边框高亮 + 焦点送进去), 之后用原生 ↑/↓ 滚它的内容.
+       必须排在 pager.js 之后 —— 它靠 QwPager 判当前是单行还是多行排列(两种排列的移动规则不同) -->
+  <script src="../js/ui/site-focus.js"></script>
+  <script src="../js/ui/mention.js"></script>
+  <script src="../js/ui/group-switch.js"></script>
+  <!-- session-switch: 保存的会话 (保存当前开启的 AI + 各自所在对话, 一键恢复); 依赖 QwState/QwGrid/QwBranding -->
+  <script src="../js/ui/session-switch.js"></script>
+  <!-- session-auto: 自动话题会话 (新建会话+首次发送建条目, 同话题续聊只补齐对话 URL 后冻结) -->
+  <script src="../js/ui/session-auto.js"></script>
+  <!-- quotes: 引用卡片(划词引用进来的段落, 发送时由 send.js 拼进正文); 依赖 QwState/QwI18n/QwBranding, 运行时调 QwInputPanel/QwMention/QwToast -->
+  <script src="../js/ui/quotes.js"></script>
+  <script src="../js/ui/send.js"></script>
+  <!-- voice-input: 语音输入(仅扩展端, Electron 无语音后端自动隐藏按钮); tts: 回答朗读(本机 speechSynthesis, 双端可用);
+       answers: AI 一键总结 (依赖 QwAnswerBackend 读各站回答 —— Electron executeJavaScript / 扩展 postMessage 桥, 双端可用) -->
+  <script src="../js/ui/voice-input.js"></script>
+  <script src="../js/ui/tts.js"></script>
+  <script src="../js/ui/answers.js"></script>
+  <script src="../js/ui/timeline-log.js"></script>
+  <script src="../js/ui/timeline-panel.js"></script>
+  <!-- backup.js: 导入导出编排层(应用设置 + 站点登录态), 供 settings.js 调用 (cookie 后端 window.QwCookiePlatform 由各端 index.js 挂) -->
+  <script src="../js/ui/backup.js"></script>
+  <!-- reload-guard.js: 某站点格子反复自我重载(画面一直闪)时熔断 —— 先清其失效登录 cookie 自愈一次, 再犯就停掉那一格.
+       (清 cookie 按站点 URL 交给各端平台钩子, 不依赖 backup.js 那套注册域算法 —— 按注册域【删】会误伤同域下的其它站点) -->
+  <script src="../js/ui/reload-guard.js"></script>
+  <script src="../js/ui/settings.js"></script>
+  <script src="../js/ui/menu-close.js"></script>
+
+  <!-- 平台特定渲染层加载器 (单独文件而非 inline, 因为 Chrome MV3 CSP 禁止内联 script) -->
+  <script src="../js/platform-loader.js"></script>
+</body>
+
+</html>

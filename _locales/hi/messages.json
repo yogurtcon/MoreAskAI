@@ -1,0 +1,30 @@
+{
+  "extName": {
+    "message": "DuoWen AI",
+    "description": "Extension name shown in the Chrome Web Store and the browser's extension list."
+  },
+  "extDescription": {
+    "message": "एक साथ कई AI से पूछें। एक क्लिक भेजें, विषय बदलें, लेआउट बदलें।",
+    "description": "Store listing description (about 132 characters max)."
+  },
+  "actionTitle": {
+    "message": "DuoWen AI खोलें",
+    "description": "Tooltip shown when hovering the toolbar icon."
+  },
+  "sidebarMenuOpen": {
+    "message": "साइडबार में AI खोलें",
+    "description": "Context-menu item: open the AI side panel."
+  },
+  "sidebarMenuAppend": {
+    "message": "AI चैट में जोड़ें",
+    "description": "Context-menu item (when text is selected): add the selection to the sidebar AI input."
+  },
+  "sidebarCmdDesc": {
+    "message": "साइडबार खोलें",
+    "description": "Keyboard-command description shown on the browser shortcuts page."
+  },
+  "appendSelectionCmdDesc": {
+    "message": "चयन साइडबार में जोड़ें",
+    "description": "Keyboard-command description for the ask-about-selection feature, shown on the browser shortcuts page."
+  }
+}

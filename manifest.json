@@ -1,0 +1,255 @@
+{
+  "manifest_version": 3,
+  "name": "__MSG_extName__",
+  "version": "3.10.0",
+  "version_name": "3.10.0",
+  "default_locale": "zh_CN",
+  "description": "__MSG_extDescription__",
+  "icons": {
+    "16": "shared/res/icons/icon16.png",
+    "48": "shared/res/icons/icon48.png",
+    "128": "shared/res/icons/icon128.png",
+    "192": "shared/res/icons/icon192.png"
+  },
+  "background": {
+    "service_worker": "chrome/src/js/background.js"
+  },
+  "action": {
+    "default_icon": "shared/res/icons/icon48.png",
+    "default_title": "__MSG_actionTitle__"
+  },
+  "side_panel": {
+    "default_path": "chrome/src/html/sidepanel.html"
+  },
+  "commands": {
+    "open_sidebar": {
+      "suggested_key": {
+        "default": "Alt+Q",
+        "mac": "Alt+Q"
+      },
+      "description": "__MSG_sidebarCmdDesc__"
+    },
+    "selection_to_sidebar": {
+      "suggested_key": {
+        "default": "Alt+V",
+        "mac": "Alt+V"
+      },
+      "description": "__MSG_appendSelectionCmdDesc__"
+    }
+  },
+  "permissions": [
+    "webNavigation",
+    "declarativeNetRequest",
+    "storage",
+    "sidePanel",
+    "contextMenus",
+    "activeTab",
+    "scripting"
+  ],
+  "optional_permissions": [
+    "contentSettings",
+    "browsingData",
+    "cookies"
+  ],
+  "host_permissions": [
+    "https://qun-wen.com/*",
+    "*://*.copilot.com/*",
+    "*://*.chatgpt.com/*",
+    "*://*.claude.ai/*",
+    "*://*.deepseek.com/*",
+    "*://*.doubao.com/*",
+    "*://*.google.com/*",
+    "*://*.grok.com/*",
+    "*://*.kimi.com/*",
+    "*://*.meta.ai/*",
+    "*://*.minimax.io/*",
+    "*://*.minimaxi.com/*",
+    "*://*.mistral.ai/*",
+    "*://*.moonshot.cn/*",
+    "*://*.qianwen.com/*",
+    "*://*.tencent.com/*",
+    "*://*.metaso.cn/*",
+    "*://*.chatglm.cn/*",
+    "*://*.baidu.com/*",
+    "*://*.zhihu.com/*",
+    "*://*.bigmodel.cn/*",
+    "*://*.z.ai/*",
+    "*://*.qwen.ai/*",
+    "*://*.dola.com/*",
+    "*://*.tiangong.cn/*",
+    "*://*.skywork.ai/*",
+    "*://*.duck.ai/*",
+    "*://*.duckduckgo.com/*",
+    "*://*.perplexity.ai/*",
+    "*://*.baichuan-ai.com/*",
+    "*://*.sensetime.com/*",
+    "*://*.stepfun.com/*",
+    "*://*.longcat.chat/*",
+    "*://*.n.cn/*",
+    "*://*.intern-ai.org.cn/*",
+    "*://*.openxlab.org.cn/*",
+    "*://*.coloros.com/*",
+    "*://*.heytap.com/*",
+    "*://*.huawei.com/*",
+    "*://*.vivo.com.cn/*",
+    "*://*.kdocs.cn/*",
+    "*://*.wps.cn/*",
+    "*://*.xiaohuanxiong.com/*",
+    "*://*.xfyun.cn/*"
+  ],
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "ruleset_1",
+        "enabled": true,
+        "path": "chrome/res/rules.json"
+      }
+    ]
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "*://*.copilot.com/*",
+        "*://*.chatgpt.com/*",
+        "*://*.claude.ai/*",
+        "*://*.deepseek.com/*",
+        "*://*.doubao.com/*",
+        "*://*.google.com/*",
+        "*://*.grok.com/*",
+        "*://*.kimi.com/*",
+        "*://*.meta.ai/*",
+        "*://*.minimax.io/*",
+        "*://*.minimaxi.com/*",
+        "*://*.mistral.ai/*",
+        "*://*.moonshot.cn/*",
+        "*://*.qianwen.com/*",
+        "*://*.tencent.com/*",
+        "*://*.metaso.cn/*",
+        "*://*.chatglm.cn/*",
+        "*://*.baidu.com/*",
+        "*://*.zhihu.com/*",
+        "*://*.bigmodel.cn/*",
+        "*://*.z.ai/*",
+        "*://*.qwen.ai/*",
+        "*://*.dola.com/*",
+        "*://*.tiangong.cn/*",
+        "*://*.skywork.ai/*",
+        "*://*.duck.ai/*",
+        "*://*.duckduckgo.com/*",
+        "*://*.perplexity.ai/*",
+        "*://*.baichuan-ai.com/*",
+        "*://*.sensetime.com/*",
+        "*://*.stepfun.com/*",
+        "*://*.longcat.chat/*",
+        "*://*.n.cn/*",
+        "*://*.intern-ai.org.cn/*",
+        "*://*.openxlab.org.cn/*",
+        "*://*.coloros.com/*",
+        "*://*.heytap.com/*",
+        "*://*.huawei.com/*",
+        "*://*.vivo.com.cn/*",
+        "*://*.kdocs.cn/*",
+        "*://*.wps.cn/*",
+        "*://*.xiaohuanxiong.com/*",
+        "*://*.xfyun.cn/*"
+      ],
+      "js": [
+        "shared/src/js/configs-loader.js",
+        "shared/src/js/util/utils.js",
+        "shared/src/js/inject/injector_text.js",
+        "shared/src/js/inject/injector_file.js",
+        "shared/src/js/inject/injector.js",
+        "shared/src/js/inject/injector_sidebar.js",
+        "shared/src/js/inject/injector_timeline.js",
+        "shared/src/js/inject/quote-button.js",
+        "chrome/src/js/content.js"
+      ],
+      "run_at": "document_end",
+      "all_frames": true
+    },
+    {
+      "matches": ["*://*.claude.ai/*"],
+      "js": ["chrome/src/js/claude-frame-ui.js"],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.perplexity.ai/*"],
+      "js": ["chrome/src/js/sw-killer.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": ["*://*.xiaohuanxiong.com/*"],
+      "js": ["chrome/src/js/embed-cookie-shim.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "*://*.copilot.com/*",
+        "*://*.chatgpt.com/*",
+        "*://*.claude.ai/*",
+        "*://*.deepseek.com/*",
+        "*://*.doubao.com/*",
+        "*://*.google.com/*",
+        "*://*.grok.com/*",
+        "*://*.kimi.com/*",
+        "*://*.meta.ai/*",
+        "*://*.minimax.io/*",
+        "*://*.minimaxi.com/*",
+        "*://*.mistral.ai/*",
+        "*://*.moonshot.cn/*",
+        "*://*.qianwen.com/*",
+        "*://*.tencent.com/*",
+        "*://*.metaso.cn/*",
+        "*://*.chatglm.cn/*",
+        "*://*.baidu.com/*",
+        "*://*.zhihu.com/*",
+        "*://*.bigmodel.cn/*",
+        "*://*.z.ai/*",
+        "*://*.qwen.ai/*",
+        "*://*.dola.com/*",
+        "*://*.tiangong.cn/*",
+        "*://*.skywork.ai/*",
+        "*://*.duck.ai/*",
+        "*://*.duckduckgo.com/*",
+        "*://*.perplexity.ai/*",
+        "*://*.baichuan-ai.com/*",
+        "*://*.sensetime.com/*",
+        "*://*.stepfun.com/*",
+        "*://*.longcat.chat/*",
+        "*://*.n.cn/*",
+        "*://*.intern-ai.org.cn/*",
+        "*://*.openxlab.org.cn/*",
+        "*://*.coloros.com/*",
+        "*://*.heytap.com/*",
+        "*://*.huawei.com/*",
+        "*://*.vivo.com.cn/*",
+        "*://*.kdocs.cn/*",
+        "*://*.wps.cn/*",
+        "*://*.xiaohuanxiong.com/*",
+        "*://*.xfyun.cn/*"
+      ],
+      "js": ["chrome/src/js/embed-containment.js", "shared/src/js/inject/offscreen-raf.js"],
+      "run_at": "document_start",
+      "all_frames": true,
+      "world": "MAIN"
+    }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "shared/res/domestic.json",
+        "shared/res/global.json",
+        "shared/res/default.json"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "extName": {
+    "message": "DuoWen AI",
+    "description": "Extension name shown in the Chrome Web Store and the browser's extension list."
+  },
+  "extDescription": {
+    "message": "Pregunta a varias IA a la vez. Envío rápido, cambio de tema y diseños personalizados.",
+    "description": "Store listing description (about 132 characters max)."
+  },
+  "actionTitle": {
+    "message": "Abrir DuoWen AI",
+    "description": "Tooltip shown when hovering the toolbar icon."
+  },
+  "sidebarMenuOpen": {
+    "message": "Abrir IA en la barra lateral",
+    "description": "Context-menu item: open the AI side panel."
+  },
+  "sidebarMenuAppend": {
+    "message": "Añadir al chat de IA",
+    "description": "Context-menu item (when text is selected): add the selection to the sidebar AI input."
+  },
+  "sidebarCmdDesc": {
+    "message": "Abrir barra lateral",
+    "description": "Keyboard-command description shown on the browser shortcuts page."
+  },
+  "appendSelectionCmdDesc": {
+    "message": "Añadir selección a la barra lateral",
+    "description": "Keyboard-command description for the ask-about-selection feature, shown on the browser shortcuts page."
+  }
+}

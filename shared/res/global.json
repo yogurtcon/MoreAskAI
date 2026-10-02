@@ -1,0 +1,268 @@
+[
+  {
+    "id": "chatgpt",
+    "name": "ChatGPT",
+    "url": "https://chatgpt.com/",
+    "theme": "reload",
+    "themeChrome": { "attrs": ["class"] },
+    "actions": {
+      "findInput": { "selectors": ["#prompt-textarea", "form[data-chatgpt-composer] .ProseMirror[contenteditable='true']", "#mobile-composer-prompt"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["form[data-chatgpt-composer] input[type='file']", "input[data-testid='file-upload']", "#octane-mobile-composer-files-input", "input[type='file']"],
+        "waitFor": "form[data-chatgpt-composer]:has(.composer-attachment-surface):not(:has(.composer-attachment-surface [role='progressbar'])), [data-testid='send-button']:not([disabled])"
+      },
+      "send": { "method": "click", "selectors": ["form[data-chatgpt-composer] button[type='submit']", "[data-testid='send-button']", "#composer-submit-button", "form[data-mobile-composer] button[type='submit']"] },
+      "readAnswer": { "selectors": ["[data-chatgpt-search-unit-key$=':assistant'] [data-markdown-text-style='assistant-message']:not([data-markdown-text-tone='tertiary'])", "li[data-message-role='assistant'] [data-assistant-markdown]"] },
+      "readQuestions": { "selectors": ["[data-user-message-bubble] .whitespace-pre-wrap", "li[data-message-role='user'] [data-user-message-copy]"] },
+      "hideInput": { "selectors": ["form:has(#prompt-textarea)", "form[data-chatgpt-composer]", "form[data-mobile-composer]"] }
+    }
+  },
+  {
+    "id": "claude",
+    "name": "Claude",
+    "url": "https://claude.ai/",
+    "theme": "reload",
+    "themeChrome": { "attrs": ["data-mode"] },
+    "actions": {
+      "findInput": { "selectors": ["div[contenteditable='true']", ".ProseMirror"] },
+      "addText": { "method": "insertText" },
+      "addFile": { "method": "paste", "waitFor": "button[aria-label='Send message']" },
+      "send": { "method": "click", "selectors": ["button[aria-label='Send message']"] },
+      "hideInput": { "selectors": ["fieldset:has(.ProseMirror)"] }
+    }
+  },
+  {
+    "id": "copilot",
+    "name": "Copilot",
+    "url": "https://www.copilot.com/",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": ["[data-content='user-message']"] },
+      "readAnswer": { "selectors": ["[data-content='ai-message']"], "stripSelectors": ["[role='toolbar']"] },
+      "findInput": { "selectors": ["textarea#userInput", "textarea"] },
+      "addText": { "method": "insertText", "preInject": true },
+      "addFile": {
+        "method": "paste",
+        "waitFor": "button[data-testid='submit-button']:not([disabled])"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='bg-white/90']:has(#userInput)"] }
+    }
+  },
+  {
+    "id": "dola",
+    "name": "Dola",
+    "url": "https://www.dola.com/chat/",
+    "theme": { "attrs": ["data-theme"], "bodyAttrs": ["theme-mode"] },
+    "actions": {
+      "readQuestions": { "selectors": [".bg-g-send-msg-bubble-bg .md-box-root"] },
+      "collapseSidebar": {
+        "selectors": ["#chat-route-layout [class*='pl-g-header-left-padding'] > :first-child > button", "#chat-route-layout [class*='pl-g-header-left-padding'] > button:first-child"],
+        "expandSelectors": ["#chat-route-layout [class*='pl-g-header-left-padding'] > :first-child > button", "#chat-route-layout [class*='pl-g-header-left-padding'] > button:first-child"],
+        "expandedSelectors": ["#flow_chat_sidebar:not([class*='!pointer-events-none'])"],
+        "collapsedSelectors": ["#flow_chat_sidebar[class*='!pointer-events-none']"]
+      },
+      "findInput": { "selectors": ["div.tiptap.ProseMirror", "div[contenteditable='true']", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "preClick": {
+          "selectors": [
+            "#input-engine-container:not(:has(input[type='file'])) div.h-36.w-36 > button",
+            "#input-engine-container:not(:has(input[type='file'])) button:has(path[d^='M12.0005 2.25'])"
+          ],
+          "waitFor": "input[type='file']",
+          "suppressFilePicker": true
+        },
+        "waitFor": "#input-engine-container:has(#flow-end-msg-send:not([disabled])):not(:has([class*='loading-overlay-'])):not(:has(.semi-progress-circle))"
+      },
+      "readAnswer": {
+        "selectors": [
+          "[data-copy-telemetry='right_click_copy'] .md-box-root"
+        ]
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div:has(> #input-engine-container)"] }
+    }
+  },
+  {
+    "id": "duckai",
+    "name": "Duck.ai",
+    "url": "https://duck.ai/",
+    "hideOn": ["chrome"],
+    "theme": "reload",
+    "actions": {
+      "findInput": { "selectors": ["textarea[name='user-prompt']", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file']"],
+        "waitFor": "button[type='submit']:not([disabled])"
+      },
+      "send": { "method": "click", "selectors": ["button[type='submit']"] },
+      "hideInput": { "selectors": ["form:has(textarea[name='user-prompt'])"], "chatDetect": "[data-testid='user-message']" }
+    }
+  },
+  {
+    "id": "gemini",
+    "name": "Gemini",
+    "url": "https://gemini.google.com/app",
+    "theme": "reload",
+    "actions": {
+      "findInput": {
+        "selectors": ["div[contenteditable='true'][role='textbox']", "div.ql-editor", "rich-textarea div[contenteditable='true']"]
+      },
+      "addText": { "method": "insertText" },
+      "addFile": { "method": "paste", "waitFor": ".send-button-container:not(.disabled)" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".input-area-container"] }
+    }
+  },
+  {
+    "id": "grok",
+    "name": "Grok",
+    "url": "https://grok.com/",
+    "theme": "reload",
+    "actions": {
+      "findInput": {
+        "selectors": ["[data-testid='chat-input'] [contenteditable='true']", ".ProseMirror[contenteditable='true']", "div[contenteditable='true']"]
+      },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[name='files']", "input[type='file']"],
+        "waitFor": "button[data-testid='chat-submit']:not([disabled])"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".query-bar"] }
+    }
+  },
+  {
+    "id": "metaai",
+    "name": "Meta AI",
+    "url": "https://www.meta.ai/",
+    "themeChrome": { "attrs": ["class"] },
+    "actions": {
+      "findInput": {
+        "selectors": ["div[data-testid='composer-input'][contenteditable='true']", "div[data-lexical-editor='true'][contenteditable='true']"]
+      },
+      "addText": { "method": "paste", "beforeFiles": true },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "waitFor": "div:has([data-testid='composer-input']):not(:has([role='feed'])):has([data-testid='composer-input'] .inline-image-node, [class*='group/attachment-tile']):has(button[data-testid='composer-send-button']:not([disabled]))"
+      },
+      "send": { "method": "click", "selectors": ["button[data-testid='composer-send-button']"] },
+      "readAnswer": { "selectors": ["div[data-testid='assistant-message'] .ur-markdown:not([data-testid='subagent-cot-list'] *)"] },
+      "readQuestions": { "selectors": ["[data-message-type='user'] [data-slot='text'].text-response"] },
+      "collapseSidebar": {
+        "selectors": ["button[data-sidebar='trigger']"],
+        "expandSelectors": ["button[data-sidebar='trigger']"],
+        "expandedSelectors": ["nav[data-slot='sidebar'][data-state='expanded']"],
+        "collapsedSelectors": ["nav[data-slot='sidebar'][data-state='collapsed']"]
+      },
+      "hideInput": { "selectors": ["div.pointer-events-none.z-20:has([data-testid='composer-input'])"] }
+    }
+  },
+  {
+    "id": "minimax_intl",
+    "name": "MiniMax (Global)",
+    "url": "https://agent.minimax.io/",
+    "navigationOrigins": ["https://agent.minimaxi.com"],
+    "loginState": { "cookieOrigins": ["https://agent.minimaxi.com"] },
+    "theme": "reload",
+    "themeChrome": "filter",
+    "actionsRef": "minimax"
+  },
+  {
+    "id": "mistral",
+    "name": "Mistral",
+    "url": "https://chat.mistral.ai/chat",
+    "themeChrome": { "attrs": ["class"] },
+    "actions": {
+      "findInput": { "selectors": ["div.ProseMirror[contenteditable='true']", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText", "preInject": true },
+      "addFile": {
+        "method": "paste",
+        "waitFor": "button[aria-label='Send']:not([disabled]):not([aria-disabled='true'])"
+      },
+      "send": { "method": "enter" },
+      "collapseSidebar": {
+        "selectors": ["button[aria-label='Collapse sidebar']"],
+        "expandedSelectors": ["[data-variant='sidebar'][data-side='left'][data-state='expanded']"],
+        "collapsedSelectors": ["[data-variant='sidebar'][data-side='left'][data-state='collapsed']"]
+      },
+      "hideInput": {
+        "selectors": ["form:has(.ProseMirror)"],
+        "newChatUrlPattern": "^https://chat\\.mistral\\.ai/(chat|work|code)(\\?|$)"
+      }
+    }
+  },
+  {
+    "id": "perplexity",
+    "name": "Perplexity",
+    "url": "https://www.perplexity.ai/",
+    "theme": "reload",
+    "themeChrome": { "attrs": ["data-color-scheme"] },
+    "actions": {
+      "readQuestions": { "selectors": ["[class~='group/user-bubble'] .whitespace-pre-line"] },
+      "findInput": { "selectors": ["#ask-input", "textarea"] },
+      "addText": { "method": "paste" },
+      "addFile": {
+        "method": "paste",
+        "waitFor": "button[aria-label='Submit']:not([disabled]), button[aria-label='发送']:not([disabled])"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='rounded-2xl']:has(#ask-input)"] }
+    }
+  },
+  {
+    "id": "qwen",
+    "name": "Qwen (Global)",
+    "url": "https://chat.qwen.ai/",
+    "theme": { "attrs": ["class"] },
+    "actions": {
+      "readQuestions": { "selectors": [".qwen-chat-message-user .chat-user-message"] },
+      "findInput": { "selectors": ["textarea.message-input-textarea", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": { "method": "drop", "waitFor": ".file-card-list:has(.fileitem-btn, .vision-item-container):not(:has(svg[class*='spinner']))" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".chat-layout-input-container"] }
+    }
+  },
+  {
+    "id": "skywork",
+    "name": "Skywork",
+    "url": "https://skywork.ai/",
+    "theme": "reload",
+    "themeChrome": { "attrs": ["class"] },
+    "actions": {
+      "findInput": { "selectors": ["div.tiptap.ProseMirror", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText" },
+      "addFile": { "method": "fileInput", "selectors": ["input[type='file']"], "waitFor": ".input-file-strip__item img[src^='https']" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".search-area-container"] }
+    }
+  },
+  {
+    "id": "z.ai",
+    "name": "Z.AI",
+    "url": "https://chat.z.ai/",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": [".user-message .chat-user"] },
+      "findInput": { "selectors": ["#chat-input", "textarea", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file']"],
+        "waitFor": "form div[class*='flex-wrap']:has([class*='w-60']):not(:has([class*='spinner_'])):not(:has(img[src^='blob:']))"
+      },
+      "send": { "method": "click", "selectors": ["#send-message-button", "button.sendMessageButton"] },
+      "hideInput": { "selectors": [".messageInputContainer"] }
+    }
+  }
+]

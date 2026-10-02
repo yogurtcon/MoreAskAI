@@ -1,0 +1,589 @@
+[
+  {
+    "id": "baichuan",
+    "name": "百小医",
+    "url": "https://yi.baichuan-ai.com/chat",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": [".prompt-text-item > span"] },
+      "findInput": { "selectors": ["textarea.bc-scrollbar", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "waitFor": "div[class*='gap-2']:has(> div[class*='h-[52px]']):not(:has(img[alt='loading']))"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div:has(> div > .bc-scrollbar-box > textarea)"], "newChatUrlPattern": "^https://yi\\.baichuan-ai\\.com/chat(?:[?&](?!sid=)[^&]*)*$" }
+    }
+  },
+  {
+    "id": "deepseek",
+    "name": "DeepSeek",
+    "url": "https://chat.deepseek.com/",
+    "actions": {
+      "readQuestions": { "selectors": [".ds-message .fbb737a4"] },
+      "findInput": { "selectors": ["textarea#chat-input", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "preClick": {
+          "selectors": { "image": ["div[role='radio'][data-model-type='vision'][aria-checked='false']"] },
+          "waitFor": "div[role='radio'][data-model-type='vision'][aria-checked='true']"
+        },
+        "waitFor": "div[role='button'][aria-label='发送']:not([aria-disabled='true']), div[class*='ds-send-button']:not([aria-disabled='true']), div[role='button'][class*='ds-button--primary']:not([class*='ds-button--disabled'])"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div:has(> div > div > div > div > textarea)", "div:has(> div > textarea)"] }
+    }
+  },
+  {
+    "id": "doubao",
+    "name": "豆包",
+    "url": "https://www.doubao.com",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": [".bg-g-send-msg-bubble-bg .md-box-root"] },
+      "collapseSidebar": {
+        "selectors": ["#chat-route-layout [class*='pl-g-header-left-padding'] > :first-child > button", "#chat-route-layout [class*='pl-g-header-left-padding'] > button:first-child"],
+        "expandSelectors": ["#chat-route-layout [class*='pl-g-header-left-padding'] > :first-child > button", "#chat-route-layout [class*='pl-g-header-left-padding'] > button:first-child"],
+        "expandedSelectors": ["#flow_chat_sidebar:not([class*='!pointer-events-none'])"],
+        "collapsedSelectors": ["#flow_chat_sidebar[class*='!pointer-events-none']"]
+      },
+      "findInput": { "selectors": ["textarea", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "waitFor": "#input-engine-container:has(#flow-end-msg-send:not([disabled])):not(:has([class*='loading-overlay-'])):not(:has(.semi-progress-circle))"
+      },
+      "readAnswer": {
+        "selectors": [
+          "[data-copy-telemetry='right_click_copy'] .md-box-root"
+        ]
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div:has(> #input-engine-container)"] }
+    }
+  },
+  {
+    "id": "jieyue",
+    "name": "阶跃AI",
+    "url": "https://chat.stepfun.com/",
+    "theme": { "attrs": ["class"] },
+    "actions": {
+      "readQuestions": { "selectors": [".message .items-end > .whitespace-break-spaces"] },
+      "readAnswer": { "selectors": [".message [class*='message-markdown_markdown']:not([class*='reason-render'])"], "pick": "first" },
+      "findInput": { "selectors": ["textarea[class*='Publisher_textarea']", "div[class*='Publisher_input'] textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "waitFor": "div:has(> div > div[class*='Publisher_input']):has(div[class*='bg-fill-gold']):not(:has(svg > circle)):not(:has(img[src^='blob:']))"
+      },
+      "send": { "method": "click", "selectors": ["button:has(svg.custom-icon-send-outline):not([disabled])"] },
+      "hideInput": {
+        "selectors": ["div:has(> div > div[class*='Publisher_input'])"],
+        "newChatUrlPattern": "^https://chat\\.stepfun\\.com/(chats/new)?(?:[?#]|$)"
+      }
+    }
+  },
+  {
+    "id": "kimi",
+    "name": "Kimi",
+    "url": "https://www.kimi.com/",
+    "themeChrome": { "attrs": ["class"] },
+    "actions": {
+      "readQuestions": { "selectors": [".chat-content-item-user .user-content"] },
+      "findInput": { "selectors": [".chat-input-editor", "div[contenteditable='true']"] },
+      "addText": { "method": "paste" },
+      "addFile": { "method": "paste", "waitFor": ".send-button-container:not(.disabled)" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".chat-action"] }
+    }
+  },
+  {
+    "id": "lingxi",
+    "name": "灵犀",
+    "url": "https://lingxi.kdocs.cn/",
+    "theme": { "attrs": ["theme-mode"] },
+    "actions": {
+      "readQuestions": { "selectors": [".message-item--user .item__value"] },
+      "findInput": { "selectors": ["div.editor[data-lexical-editor='true']", "div[contenteditable='true']"] },
+      "addText": { "method": "paste" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]"],
+        "waitFor": ".file-list:has(.file-item):not(:has(.file--uploading))"
+      },
+      "send": { "method": "click", "selectors": ["button.confirm__btn"] },
+      "readAnswer": { "selectors": ["li.message-item--assistant .md__wrapper:not(.ai-reasoning) .md__content"] },
+      "hideInput": { "selectors": [".chat__footer"] }
+    }
+  },
+  {
+    "id": "longcat",
+    "name": "LongCat",
+    "url": "https://longcat.chat/",
+    "theme": "filter",
+    "fitCss": [
+      ".v-app-container{min-width:0!important;}",
+      ".app-menus-content{min-width:0!important;}",
+      ".app-page-content{min-width:0!important;}",
+      "#pageContentScroll{min-width:0!important;}",
+      ".page-content-inner{min-width:0!important;}",
+      "@media (max-width:900px){.app-page-content{padding-left:10px!important;padding-right:10px!important;box-sizing:border-box!important;}}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": [".v-chat-user-message .user-text"] },
+      "findInput": { "selectors": [".v-chat-input div.tiptap.ProseMirror", "div.tiptap.ProseMirror"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input.upload-input", "input[type='file']"],
+        "oneByOne": true,
+        "preClick": {
+          "selectors": [".v-checked-button.active:has(use[href='#icon-lianwang'])"],
+          "waitFor": ".upload-button:not(.disabled)"
+        },
+        "waitFor": ".upload-item-list-cont.has-item:not(:has(.mtd-progress)):not(:has(img[src^='blob:']))"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".page-footer", ".chat-input-container"] }
+    }
+  },
+  {
+    "id": "metaso",
+    "name": "秘塔AI",
+    "url": "https://metaso.cn/",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": ["[data-testid^='_ResultTitle.span.']"] },
+      "collapseSidebar": {
+        "selectors": ["#left-menu button[data-testid='HeaderAction.CircleStyledIconButton.0']"],
+        "expandSelectors": ["#left-menu[class*='LeftMenu_collapse__'] [class*='LeftMenu_header-inner__'] > button"],
+        "expandedSelectors": ["#left-menu:not([class*='LeftMenu_collapse__'])"],
+        "collapsedSelectors": ["#left-menu[class*='LeftMenu_collapse__']"]
+      },
+      "findInput": { "selectors": ["textarea.search-consult-textarea", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple][accept*='image/']", "input[type='file'][multiple]"],
+        "waitFor": "button.send-arrow-button:not([disabled])"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='z-21']:has(textarea)"] }
+    }
+  },
+  {
+    "id": "mimo",
+    "name": "MiMo",
+    "url": "https://aistudio.xiaomimimo.com/#/c",
+    "hideOn": ["chrome"],
+    "actions": {
+      "findInput": { "selectors": ["textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file']"],
+        "waitFor": ".scrollbar-none div.min-w-60.cursor-pointer"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='rounded-xl']:has(textarea)"] }
+    }
+  },
+  {
+    "id": "minimax",
+    "name": "MiniMax",
+    "url": "https://agent.minimaxi.com/",
+    "theme": "reload",
+    "themeChrome": "filter",
+    "actions": {
+      "readQuestions": { "selectors": ["[data-testid='user-message-text']"] },
+      "findInput": { "selectors": ["div[data-testid='message-textarea']", "div.tiptap-editor", "div.tiptap.ProseMirror", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText", "preInject": true },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[data-testid='file-input']", ".ant-upload-select input[type='file']", "input[type='file'][multiple]", "input[type='file']"],
+        "waitFor": "#input-send-icon div:not([class*='inactive']), [data-testid='send-button']:not([class*='inactive'])"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='z-30']:has(.tiptap)", "div[class*='rounded-[16px]']:has([data-testid='message-textarea'])"] }
+    }
+  },
+  {
+    "id": "nami",
+    "name": "纳米AI",
+    "url": "https://www.n.cn/",
+    "theme": "filter",
+    "fitCss": [
+      ".min-w-1200px,.min-w-652px{min-width:0!important;}",
+      "#chat-header,#chat-header>*{min-width:0!important;}",
+      "#NM-ASSISTANT_chat_input{min-width:0!important;}",
+      ".home-operation-banner,.home-operation-banner__image{max-width:100%!important;height:auto!important;}",
+      ".search-home-sections div:has(>.w-88px){grid-auto-flow:row!important;grid-template-columns:repeat(auto-fit,88px)!important;justify-content:center!important;row-gap:12px!important;}",
+      ".home-footer{flex-wrap:wrap!important;row-gap:4px!important;justify-content:center!important;}",
+      "@media (max-width:360px){section#NM-ASSISTANT_chat_input{padding-left:0!important;padding-right:0!important;}div#NM-ASSISTANT_chat_input{padding-left:4px!important;}#NM-ASSISTANT_chat_input section.justify-between{flex-wrap:wrap!important;height:auto!important;}}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": [".js-message-list section.items-end > .whitespace-pre-line"] },
+      "findInput": { "selectors": ["div[data-slate-editor='true'].prompt-helper-input", "div[data-slate-editor='true']"] },
+      "addText": { "method": "slate" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": {
+          "image": ["input.js-input-file[accept*='.webp']:not([accept*='.pdf'])", "input.js-input-file"],
+          "file": ["input.js-input-file[accept*='.pdf']", "input.js-input-file"]
+        },
+        "waitFor": "button.send-btn:not([disabled])"
+      },
+      "send": { "method": "click", "selectors": ["button.send-btn:not([disabled])"] },
+      "hideInput": { "selectors": ["#NM-ASSISTANT_chat_input"] }
+    }
+  },
+  {
+    "id": "qianwen",
+    "name": "千问",
+    "url": "https://www.qianwen.com/",
+    "theme": { "attrs": ["data-theme", "color-scheme-lock", "data-theme-actual"] },
+    "actions": {
+      "readQuestions": { "selectors": [".chat-question-wrap .question-text-card"] },
+      "findInput": { "selectors": ["div[data-slate-editor='true']"] },
+      "addText": { "method": "paste" },
+      "addFile": { "method": "drop", "waitFor": "[data-component='ImageBox'] img[src^='https'], [class*='fileBox']:not(:has([data-icon-type='qwpcicon-loading']))" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='rounded-[28px]']:has([data-slate-editor='true'])"] }
+    }
+  },
+  {
+    "id": "qingyan",
+    "name": "清言",
+    "url": "https://chatglm.cn/",
+    "theme": "reload",
+    "actions": {
+      "readQuestions": { "selectors": [".conversation.question .question-txt"] },
+      "collapseSidebar": {
+        "selectors": [".aside-header .operation-btn:has(.expand-icon)"],
+        "expandSelectors": ["aside.collapse-aside .aside-header .operation-btn:not(.history-collapse)"],
+        "expandedSelectors": ["aside.aside-container:not(.collapse-aside)"],
+        "collapsedSelectors": ["aside.aside-container.collapse-aside"]
+      },
+      "findInput": { "selectors": ["textarea.scroll-display-none", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": [".el-upload__input", "input[type='file'][name='file']"],
+        "waitFor": ".file-list-box img[src*='chatglm.cn/file']"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".search-box-wrapper", ".model-select-container"], "newChatUrlPattern": "^https://chatglm\\.cn/main/alltoolsdetail(?:[?&](?!cid=)[^&]*)*$" }
+    }
+  },
+  {
+    "id": "shangliang",
+    "name": "商量",
+    "url": "https://chat.sensetime.com/",
+    "theme": "filter",
+    "fitCss": [
+      "@media (max-width:1100px){.layout-container{min-width:0!important;}[class*=\"Chat_v2_chatContentLeft__\"]{min-width:0!important;}[class*=\"Chat_v2_chatContentRight__\"]{min-width:0!important;width:90%!important;}[class*=\"QuestionInput_v2_questionInput__\"]{min-width:0!important;}[class*=\"Chat_v2_fullInputWrap__\"]{width:100%!important;}}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": ["[class*='PopUser_question-text']"] },
+      "collapseSidebar": {
+        "selectors": ["[class*='Chat_v2_chatContentLeft__'] [class*='Chat_v2_foldIcon__'] > svg"],
+        "expandSelectors": ["[class*='Chat_v2_chatContentLeftFold__'] [class*='Chat_v2_foldIcon__'] > svg"],
+        "expandedSelectors": ["[class*='Chat_v2_chatContentLeft__']"],
+        "collapsedSelectors": ["[class*='Chat_v2_chatContentLeftFold__']"]
+      },
+      "findInput": { "selectors": ["textarea[class*='_textArea__']", "textarea.ant-input"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "paste",
+        "waitFor": "div[class*='RightBtn'] svg[class*='RightBtnHighlight']"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div[class*='chatFooter']"], "chatDetect": "div[class*='chatFooter']" }
+    }
+  },
+  {
+    "id": "shusheng",
+    "name": "书生",
+    "url": "https://chat.intern-ai.org.cn/",
+    "theme": "filter",
+    "fitCss": [
+      "#innerMessageWindow{min-width:0!important;}",
+      "#bottomContainerInput{min-width:0!important;}",
+      "#js-input [class*=\"_tools_\"]{flex-wrap:wrap!important;}",
+      "@media (max-width:880px){#innerMessageWindow,#bottomContainerInput{padding-right:12px!important;}}",
+      "@media (max-width:1120px){[class*=\"_layout-main-content_\"]{flex:1 1 auto!important;width:auto!important;max-width:100%!important;min-width:0!important;}[class*=\"_intro_\"],[class*=\"_introContent_\"],[class*=\"_metaPrompt_\"],[class*=\"_caseCardList_\"]{width:100%!important;max-width:100%!important;min-width:0!important;}[class*=\"_footer_\"]{right:0!important;width:auto!important;max-width:100%!important;min-width:0!important;}[class*=\"_metaPrompt_\"],[class*=\"_caseCardList_\"],[class*=\"_footer-content_\"]{flex-wrap:wrap!important;}[class*=\"_layout-main-content_\"]>[class*=\"_intro_\"]{padding-left:16px!important;padding-right:16px!important;box-sizing:border-box!important;}[class*=\"_image_\"] video{width:100%!important;max-width:100%!important;}}"
+    ],
+    "sandbox": "allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-downloads allow-storage-access-by-user-activation",
+    "actions": {
+      "readQuestions": { "selectors": ["[class*='chat-bubble-list-module-bubbleUser'] [class*='chat-markdown-index-module-messageBox']"] },
+      "findInput": { "selectors": ["textarea[name='inputTextArea']", "textarea.ant-input"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[name='file'][type='file']", "input[type='file']"],
+        "waitFor": "div[class*='_box-files_']:has(div[class*='_item_']):not(:has(div[class*='_loader_']))"
+      },
+      "send": { "method": "click", "selectors": ["div[class*='_send_']:not([class*='_disabled_'])"] },
+      "hideInput": { "selectors": ["#bottomContainerInput", "div[class*='_input-area_']"] }
+    }
+  },
+  {
+    "id": "tiangong",
+    "name": "天工",
+    "url": "https://www.tiangong.cn/",
+    "theme": "reload",
+    "themeChrome": { "attrs": ["class"] },
+    "actions": {
+      "readQuestions": { "selectors": ["x-chat-card[data-type='user'] x-text-render-wrapper"] },
+      "findInput": { "selectors": ["div.tiptap.ProseMirror", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText" },
+      "addFile": { "method": "drop", "waitFor": ".input-file-strip__item img[src^='https']" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".input-cover"] }
+    }
+  },
+  {
+    "id": "wenxin",
+    "name": "文心",
+    "url": "https://wenxin.baidu.com/",
+    "theme": "filter",
+    "fitCss": [
+      "#chat-container-main-wrapper{min-width:240px!important;}",
+      "html [data-layout-mode=\"truncated\"] #chat-container-main-wrapper{flex:1 1 0%!important;}",
+      "[class*=\"_right-bar-wrapper_\"]{flex-shrink:1!important;}",
+      "[class*=\"_workspace-stage_\"]{width:100%!important;min-width:0!important;}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": [".conversation-flow-question-container .cs-question-pure-text"] },
+      "findInput": { "selectors": ["textarea.ci-textarea", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": { "method": "paste", "waitFor": ".ci-file-container:has(.ci-image):not(:has(.ci-image-uploading))" },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".chat-input-box-pc"] }
+    }
+  },
+  {
+    "id": "xiaobu",
+    "name": "小布",
+    "url": "https://xiaobu.coloros.com/chat/",
+    "loginState": { "preserveUserAgent": true, "userAgentRuleId": 11001 },
+    "theme": "reload",
+    "actions": {
+      "readQuestions": { "selectors": [".message-user-cell .message-cell"] },
+      "findInput": { "selectors": ["div.input-message.editable-div[contenteditable='true']", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText", "lineBreak": true },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": {
+          "image": [".upload-input input[type='file'][accept*='.webp']", ".upload-input input[type='file']"],
+          "file": [".upload-input input[type='file'][accept*='.pdf']", ".upload-input input[type='file'][multiple]"]
+        },
+        "waitFor": ".file-list-main .file-item:not(.file-upload):not(:has(.file-state:not([style*='display: none'])))",
+        "waitForTimeout": 20000
+      },
+      "send": { "method": "enter" },
+      "readAnswer": { "selectors": [".xb-message-text"] },
+      "hideInput": { "selectors": [".wrap-message-input"] }
+    }
+  },
+  {
+    "id": "xiaohuanxiong",
+    "name": "小浣熊",
+    "url": "https://office.xiaohuanxiong.com/home",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": [".justify-end .bg-background-muted > .markdown-body"] },
+      "findInput": { "selectors": ["div.tiptap.ProseMirror", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": ["input[type='file'][multiple]", "input[type='file']"],
+        "waitFor": "div:has(> div[class*='chat-editor_chatEditor']) > div.hide-scrollbar:has(> div):not(:has(div[class*='bg-black/50']))"
+      },
+      "send": { "method": "click", "selectors": ["button:has(svg.lucide-arrow-up):not([disabled])"] },
+      "readAnswer": { "selectors": ["div[data-id] > div.markdown-body", "div[class*='justify-start'] div.markdown-body"] },
+      "hideInput": {
+        "selectors": ["div.sticky:has(div[class*='chat-editor_chatEditor'])"],
+        "newChatUrlPattern": "^https://office\\.xiaohuanxiong\\.com/(?!chat/)"
+      }
+    }
+  },
+  {
+    "id": "xiaov",
+    "name": "小V",
+    "url": "https://xiaov.vivo.com.cn/",
+    "theme": "filter",
+    "fitCss": [
+      "@media (min-width:601px) and (max-width:1023px){.rec-container .rec-center-box{min-width:0!important;flex-wrap:wrap!important;justify-content:center!important;}.rec-container .rec-center-box>.rec-card{flex:1 0 100%!important;}.home-container .center-container{justify-content:flex-start!important;overflow-y:auto!important;}}",
+      "@media (min-width:601px) and (max-width:759px){.rec-card .agnet-list{grid-template-columns:1fr!important;}}",
+      "@media (max-width:1280px){.login.pc-login-banner-content .banner{width:calc(100% - 44px)!important;max-width:1200px!important;min-width:0!important;margin-left:0!important;margin-right:44px!important;}.login.pc-login-banner-content .banner .banner-img{width:100%!important;height:auto!important;}.login.pc-login-banner-content .banner .layout{left:auto!important;right:0!important;}}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": [".user-msg-box .msg-box"] },
+      "collapseSidebar": {
+        "selectors": [".layout-content > .left:not(.is-hidden) .left-side-container .fold-img", "#sidebarRoot.full-screen .left-side-container .fold-img"],
+        "expandSelectors": ["#rightPane .fold-icon"],
+        "expandedSelectors": [".layout-content > .left:not(.is-hidden)", "#sidebarRoot.full-screen"],
+        "collapsedSelectors": [".layout-content > .left.is-hidden", "#sidebarRoot:not(.full-screen)"]
+      },
+      "findInput": { "selectors": ["textarea.arco-textarea", "textarea"] },
+      "addText": { "method": "insertText" },
+      "send": { "method": "enter" },
+      "hideInput": {
+        "selectors": [".bottom-box.msg-input-wrap"],
+        "newChatUrlPattern": "^https?://xiaov\\.vivo\\.com\\.cn/(home|explore)?/?([?#]|$)"
+      }
+    }
+  },
+  {
+    "id": "xiaoyi",
+    "name": "小艺",
+    "url": "https://xiaoyi.huawei.com/chat/",
+    "theme": "reload",
+    "themeChrome": { "bodyAttrs": ["class"] },
+    "fitCss": [
+      ".main-container{min-width:0!important;}",
+      "@media (max-width:640px){aside.left-side{width:180px!important;}}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": [".query-item .query-cont .message-wrapper"] },
+      "findInput": { "selectors": ["div.div-textarea.editable-input[contenteditable='true']", "div[contenteditable='true']"] },
+      "addText": { "method": "insertText", "lineBreak": true },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": {
+          "file": ["#uploader input.file-input", "input[type='file'][accept*='.pdf']"]
+        }
+      },
+      "send": { "method": "enter" },
+      "hideInput": {
+        "selectors": [".input-container"],
+        "chatDetect": ".input-container__bottom"
+      }
+    }
+  },
+  {
+    "id": "xinghuo",
+    "name": "星火",
+    "url": "https://xinghuo.xfyun.cn/desk",
+    "theme": "filter",
+    "fitCss": [
+      ".ant-drawer-left .ant-drawer-mask{display:none!important;}"
+    ],
+    "actions": {
+      "readQuestions": { "selectors": ["[class*='ChatWindow_content_user'] > p"] },
+      "collapseSidebar": {
+        "selectors": ["[class*='LeftSideExpand_panel_close__']"],
+        "expandSelectors": ["[class*='LeftSide_collapse_pane__']:not([class*='LeftSide_left_side_hidden__']) button[class*='LeftSide_expand_btn__']"],
+        "expandedSelectors": ["[class*='LeftSide_expand_pane__']:not([class*='LeftSide_left_side_hidden__'])"],
+        "collapsedSelectors": ["[class*='LeftSide_left_side__'][class*='LeftSide_left_side_collapse__']"]
+      },
+      "findInput": { "selectors": ["#askwindow-textarea", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "drop",
+        "waitFor": "[class*='FileList_content']:has([class*='FileList_item']):not(:has([class*='FileList_pedding'])):not(:has([class*='FileList_upload__']))"
+      },
+      "send": { "method": "enter" },
+      "readAnswer": {
+        "selectors": [
+          "[class*='ChatWindow_content_gpt'] .markdown-body.cw",
+          "[class*='ChatWindow_content_gpt'] [class*='CodeWin_md']:not([class*='thinking_mode']) .markdown-body"
+        ],
+        "pick": "first"
+      },
+      "hideInput": {
+        "selectors": ["#ask-window"],
+        "alsoHide": ["[class*='ChatWindow_tip']"],
+        "newChatUrlPattern": "^https://xinghuo\\.xfyun\\.cn/desk(?:[?&](?!chatId=)[^&]*)*$"
+      }
+    }
+  },
+  {
+    "id": "yuanbao",
+    "name": "元宝",
+    "url": "https://yuanbao.tencent.com",
+    "themeChrome": { "attrs": ["yb-theme-mode"] },
+    "actions": {
+      "readQuestions": { "selectors": [".agent-chat__conv--human .hyc-component-text"] },
+      "findInput": { "selectors": [".ql-editor[contenteditable='true']", "div[contenteditable='true']", ".ProseMirror"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": {
+          "image": ["input[type='file'][accept*='.jpg']", "input[type='file'][accept*='.png']"],
+          "file": ["input[type='file'][accept*='.pdf']", "input[type='file'][accept*='.docx']"]
+        },
+        "preClick": [
+          {
+            "selectors": { "file": ["body:not(:has(input[type='file'][accept*='.pdf'])) [data-new-input-control='add-tools-trigger'][aria-expanded='false']"] },
+            "waitFor": "[data-new-input-control='add-tools-trigger'][aria-expanded='true']",
+            "waitForTimeout": 4000
+          },
+          {
+            "selectors": { "file": ["body:not(:has(input[type='file'][accept*='.pdf'])) [data-new-input-control='add-tools'] [role='menu'] > div[class*='bg-border-secondary'] + button[role='menuitem'] + button[role='menuitem']", "body:not(:has(input[type='file'][accept*='.pdf'])) [data-new-input-control='add-tools'] [role='menu'] button[role='menuitem']:nth-of-type(3)"] },
+            "waitFor": "input[type='file'][accept*='.pdf']",
+            "waitForTimeout": 4000,
+            "suppressFilePicker": true
+          },
+          {
+            "selectors": { "image": ["body:not(:has(input[type='file'][accept*='.jpg'])) [data-new-input-control='add-tools-trigger'][aria-expanded='false']"] },
+            "waitFor": "[data-new-input-control='add-tools-trigger'][aria-expanded='true']",
+            "waitForTimeout": 4000
+          },
+          {
+            "selectors": { "image": ["body:not(:has(input[type='file'][accept*='.jpg'])) [data-new-input-control='add-tools'] [role='menu'] > div[class*='bg-border-secondary'] + button[role='menuitem']", "body:not(:has(input[type='file'][accept*='.jpg'])) [data-new-input-control='add-tools'] [role='menu'] button[role='menuitem']:nth-of-type(2)"] },
+            "waitFor": "input[type='file'][accept*='.jpg']",
+            "waitForTimeout": 4000,
+            "suppressFilePicker": true
+          }
+        ],
+        "waitFor": "[class*='inputFileList']:has([class*='inputFileListItem']):not(:has(.t-progress--circle))",
+        "waitForTimeout": 15000
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".agent-dialogue__content--common__input__content", ".agent-dialogue__content--common__input-box"], "newChatUrlPattern": "^https?://yuanbao\\.tencent\\.com/(chat/[^/?#]+)?/?([?#]|$)" }
+    }
+  },
+  {
+    "id": "zhida",
+    "name": "知乎直答",
+    "url": "https://zhida.zhihu.com/",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": ["#fullScreen div[style*='flex-wrap: wrap'][style*='align-self: flex-end'] > div[style*='padding: 12px'][style*='border-radius: 8px'] > div[dir='auto']"] },
+      "findInput": { "selectors": ["div.public-DraftEditor-content", "div[contenteditable='true']"] },
+      "addText": { "method": "draft" },
+      "addFile": {
+        "method": "paste",
+        "waitFor": "div[style*='flex-flow: row']:has(div[style*='padding: 6px 16px 6px 6px']):not(:has(div[style*='padding: 6px 16px 6px 6px'] > div > div[dir='auto'] + div[dir='auto']:not([style*='flex-direction'])))",
+        "waitForTimeout": 12000
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": ["div:has(> div > div > div > .InputLike)", ".InputLike"] }
+    }
+  },
+  {
+    "id": "zhipu",
+    "name": "智谱AI",
+    "url": "https://bigmodel.cn/trialcenter/modeltrial/text",
+    "theme": "filter",
+    "actions": {
+      "findInput": { "selectors": ["textarea.el-textarea__inner", "textarea"] },
+      "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "fileInput",
+        "selectors": [".el-upload__input", "input[type='file'][name='file']"],
+        "waitFor": ".search-box-wrapper:has(.el-image__inner):not(:has(.el-progress--circle))"
+      },
+      "send": { "method": "enter" },
+      "hideInput": { "selectors": [".search-box-wrapper"], "chatDetect": ".chat-item" }
+    }
+  }
+]
