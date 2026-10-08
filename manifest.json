@@ -159,6 +159,7 @@
         "shared/src/js/inject/injector_text.js",
         "shared/src/js/inject/injector_file.js",
         "shared/src/js/inject/injector.js",
+        "shared/src/js/inject/send-dedupe.js",
         "shared/src/js/inject/injector_sidebar.js",
         "shared/src/js/inject/injector_timeline.js",
         "shared/src/js/inject/quote-button.js",
