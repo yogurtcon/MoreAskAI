@@ -1,0 +1,69 @@
+name: Auto-build extension on push
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Build extension ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          mkdir -p dist
+
+          zip -r dist/MoreAskAI-dev.zip \
+            manifest.json \
+            _locales \
+            chrome \
+            shared
+
+          python - dist/MoreAskAI-dev.zip <<'PY'
+          import sys
+          import zipfile
+
+          archive_path = sys.argv[1]
+          with zipfile.ZipFile(archive_path) as archive:
+              names = set(archive.namelist())
+              if "manifest.json" not in names:
+                  raise SystemExit("manifest.json must be at the ZIP root")
+          PY
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MoreAskAI-dev
+          path: dist/MoreAskAI-dev.zip
+          if-no-files-found: error
+
+      - name: Update rolling dev pre-release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          COMMIT_SHA: ${{ github.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          short_sha="${COMMIT_SHA:0:7}"
+
+          gh release create dev \
+            --prerelease \
+            --title "MoreAskAI dev build" \
+            --notes "自动构建的最新开发版（每次 push 到 main 自动更新）。当前对应提交：${short_sha}。正式发布请使用 v* tag。" \
+            2>/dev/null || true
+
+          gh release upload dev dist/MoreAskAI-dev.zip --clobber
+          gh release edit dev --notes "自动构建的最新开发版（每次 push 到 main 自动更新）。当前对应提交：${short_sha}。正式发布请使用 v* tag。"
