@@ -4,7 +4,7 @@
 
 ## 安装
 
-1. 打开项目的 [Releases](https://github.com/yogurtcon/MoreAskAI/releases) 页面，下载最新版本的 `MoreAskAI-v*.zip`。
+1. 打开项目的 [Releases](https://github.com/yogurtcon/MoreAskAI/releases) 页面，下载最新版本的 `MoreAskAI-v*.zip`。想体验最新改动也可以下载预发布 [dev 构建](https://github.com/yogurtcon/MoreAskAI/releases/tag/dev) 中的 `MoreAskAI-dev.zip`（每次推送到 main 自动更新）。
 2. 将 ZIP 文件解压到本地文件夹。
 3. 打开浏览器的扩展管理页面：
    - Chrome：在地址栏打开 `chrome://extensions`
