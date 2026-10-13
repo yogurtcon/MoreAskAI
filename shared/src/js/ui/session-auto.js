@@ -16,11 +16,16 @@
   // GPT/Claude 首条发出后改地址往往慢于千问, 窗口加长
   var CAPTURE_MS = 60000;
   var POLL_MS = 500;
+  // 抓取窗口结束后若仍有站点停在落地/临时页, 降频继续抓 (而不是放弃),
+  // 否则话题会永久存着一个「打开即新会话」的坏链接
+  var SLOW_POLL_MS = 2000;
 
   var captureTimer = null;
   var pollTimer = null;
   var capturingId = null;
   var urlObserver = null;
+  // 内容脚本上报的实时地址 (aiId -> url), 见 onFrameUrlMessage
+  var liveUrls = {};
 
   function getActiveId() {
     try {
@@ -82,6 +87,9 @@
       var wrap = document.getElementById("frame-" + site.id);
       var el = wrap && wrap.querySelector(".frame-url-text");
       var raw = (el && (el.getAttribute("data-full-url") || el.innerText)) || "";
+      // 地址栏可能还停在落地页 (background 转发慢), 而内容脚本已上报真实地址 → 用真实地址
+      var live = liveUrls[site.id];
+      if (live && (!raw || isLandingUrl(raw, site)) && !isLandingUrl(live, site)) raw = live;
       if (/^https?:/i.test(raw) && !(window.QwState && window.QwState.isLikelyEmbeddedFrameUrl && window.QwState.isLikelyEmbeddedFrameUrl(raw))) {
         try {
           var u = new URL(raw);
@@ -128,15 +136,22 @@
    */
   function isTempChatUrl(url) {
     if (!url) return false;
+    var s = String(url);
+    var decoded = s;
     try {
-      var u = new URL(cleanUrl(url) || url);
-      var p = u.pathname || "";
-      if (/\/c\/WEB:/i.test(p)) return true;
-      if (/\/c\/(pending|temp|local):/i.test(p)) return true;
-      return false;
-    } catch (e) {
-      return /\/c\/WEB:/i.test(String(url));
+      decoded = decodeURIComponent(s);
+    } catch (e) {}
+    var cands = [s, decoded];
+    for (var i = 0; i < cands.length; i++) {
+      var c = cands[i];
+      if (/\/c\/WEB:/i.test(c)) return true;
+      // ChatGPT 新建对话会先落到本地临时 id: /c/local-chatgpt:xxx (local: / pending: / temp: 同理)
+      if (/\/c\/(pending|temp|local)[:\-]/i.test(c)) return true;
+      // 真实会话 id 是 uuid, 不含冒号; /c/<id> 里一旦出现冒号就是临时/本地 id
+      var m = /\/c\/([^\/?#]+)/i.exec(c);
+      if (m && m[1] && m[1].indexOf(":") >= 0) return true;
     }
+    return false;
   }
 
   /**
@@ -423,13 +438,19 @@
     pollTimer = setInterval(upgradeActiveUrls, POLL_MS);
     captureTimer = setTimeout(function () {
       var sess = findSession(getActiveId());
-      // 还有站点停在落地页就只停轮询、保持未冻结, 同话题下次发送会再抓
-      if (sess && !topicStillNeedsCapture(sess)) freezeActive();
-      else stopCapture();
+      if (sess && !topicStillNeedsCapture(sess)) {
+        freezeActive();
+        return;
+      }
+      // 仍有站点停在落地/临时页: 不冻结也不放弃, 降频继续抓,
+      // 直到补齐 (切换话题时 stopCapture 会停掉)
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(upgradeActiveUrls, SLOW_POLL_MS);
     }, CAPTURE_MS);
   }
 
   function createTopic(text) {
+    liveUrls = {};
     var sites = enabledSites();
     if (!sites.length) return null;
     var session = {
@@ -447,6 +468,7 @@
   }
 
   function onNewSession() {
+    liveUrls = {};
     setPending(true);
     setActiveId("");
     setFrozen(false);
@@ -493,8 +515,27 @@
     if (!id) return;
     setActiveId(id);
     setPending(false);
-    setFrozen(true);
-    stopCapture();
+    liveUrls = {};
+    var sess = findSession(id);
+    // 恢复的话题若还有站点停在落地/临时页, 不要冻结: 稍后继续抓,
+    // 免得它一直存着「打开即新会话」的坏链接
+    if (sess && topicStillNeedsCapture(sess)) {
+      setFrozen(false);
+      stopCapture();
+      // 等新页面导航落地后再抓, 避免把上一话题的 last_url 误写进来
+      setTimeout(function () {
+        if (getActiveId() !== id) return;
+        var cur = findSession(id);
+        if (cur && topicStillNeedsCapture(cur)) startCapture(id);
+        else {
+          setFrozen(true);
+          stopCapture();
+        }
+      }, 3000);
+    } else {
+      setFrozen(true);
+      stopCapture();
+    }
   }
 
   function guessSessionFromFrames() {
@@ -543,6 +584,31 @@
     }
   });
 
+  /**
+   * 内容脚本会把当前页地址 postMessage 给父页 (__qwFrameUrl). 父页此前没有监听,
+   * 地址栏只能等 background 转发 (偶发慢/丢). 这里直接接住: 既刷新地址栏,
+   * 也留一份实时地址给抓取用, 让「落地页 → 对话页」补链不依赖 background 往返.
+   */
+  function onFrameUrlMessage(ev) {
+    var d = ev && ev.data;
+    if (!d || !d.__qwFrameUrl) return;
+    var aiId = d.aiId,
+      url = d.url;
+    if (typeof aiId !== "string" || typeof url !== "string" || !/^https?:/i.test(url)) return;
+    var ifr = null;
+    try {
+      var wrap = document.getElementById("frame-" + aiId);
+      ifr = wrap && wrap.querySelector("iframe");
+    } catch (e) {}
+    if (!ifr || ev.source !== ifr.contentWindow) return;
+    liveUrls[aiId] = url;
+    try {
+      window.QwGrid && window.QwGrid.setUrlText && window.QwGrid.setUrlText(aiId, url);
+    } catch (e) {}
+    upgradeActiveUrls();
+  }
+
+  window.addEventListener("message", onFrameUrlMessage);
   window.QwSessionAuto = {
     createTopic: createTopic,
     freeze: freezeActive,
