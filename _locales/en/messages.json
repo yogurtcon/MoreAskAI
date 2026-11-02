@@ -1,6 +1,6 @@
 {
   "extName": {
-    "message": "DuoWen AI",
+    "message": "MoreAskAI",
     "description": "Extension name shown in the Chrome Web Store and the browser's extension list."
   },
   "extDescription": {
@@ -8,7 +8,7 @@
     "description": "Store listing description (about 132 characters max)."
   },
   "actionTitle": {
-    "message": "Open DuoWen AI",
+    "message": "Open MoreAskAI",
     "description": "Tooltip shown when hovering the toolbar icon."
   },
   "sidebarMenuOpen": {

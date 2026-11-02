@@ -84,7 +84,7 @@
     .qw-tool-btn:hover { background: var(--hover); color: var(--text); }
     .qw-tool-btn svg { width: 16px; height: 16px; display: block; }
 
-    /* 群问/单聊 模式切换按钮: 用扩展自身 icon. 选中(qw-on)=群问(发给所有 AI); 未选中=单聊(只当前 AI) */
+    /* 群发/单聊 模式切换按钮: 用扩展自身 icon. 选中(qw-on)=群发(发给所有 AI); 未选中=单聊(只当前 AI) */
     .qw-mode-btn {
       flex: 0 0 auto;
       width: 30px;
@@ -101,7 +101,7 @@
     .qw-mode-btn:hover { background: var(--hover); }
     .qw-mode-ic { width: 18px; height: 18px; display: block; border-radius: 4px; }
     .qw-mode-btn.qw-on { border-color: #2563eb; background: rgba(37, 99, 235, 0.12); }
-    /* 单聊(未选中): icon 去饱和 + 略透明, 暗示"群问未启用" */
+    /* 单聊(未选中): icon 去饱和 + 略透明, 暗示"群发未启用" */
     .qw-mode-btn:not(.qw-on) .qw-mode-ic { filter: grayscale(0.65); opacity: 0.7; }
 
     /* 当前站点 URL 条 (iframe 内 content.js 上报); flex:1 动态伸缩, 右侧那排按钮 flex:0 固定、优先显示.
@@ -523,7 +523,7 @@
     }
 
     /* --- 工具箱 (右侧悬浮按钮): 分组 / 会话 / 常用语 三合一弹层, 逻辑见 sidepanel.js ---
-       为什么悬浮而不是塞进输入条: 输入条(.qw-composer-wrap)只在【群问】模式显示, 单聊模式整块 display:none,
+       为什么悬浮而不是塞进输入条: 输入条(.qw-composer-wrap)只在【群发】模式显示, 单聊模式整块 display:none,
        按钮跟着一起没了 —— 而分组/会话/常用语跟发不发给所有 AI 无关, 两种模式都该能用. 故提到 .qw-frame-wrap 里浮着.
        常驻但半透明, 悬停/展开时才实心 —— 盖在 AI 内容上要克制(同 .qw-nav-btn 的取向).
        可拖动 + 右缘吸附, 逻辑复用工作台那组悬浮按钮的 fab-drag.js (由 sidepanel.js 调 attach 接管);
@@ -782,7 +782,7 @@
       <div id="qwSiteMenu" class="qw-site-menu" role="listbox"></div>
     </div>
 
-    <!-- 群问/单聊 模式切换 (用扩展 icon): 选中=群问(发给所有 AI); 未选中=单聊(只当前 AI, 隐藏底部输入框) -->
+    <!-- 群发/单聊 模式切换 (用扩展 icon): 选中=群发(发给所有 AI); 未选中=单聊(只当前 AI, 隐藏底部输入框) -->
     <div id="qwModeToggle" class="qw-mode-btn" role="button" aria-pressed="true">
       <img class="qw-mode-ic" src="../../../shared/res/icons/icon48.png" alt="" draggable="false">
     </div>
@@ -825,7 +825,7 @@
     <div id="qwNavPrev" class="qw-nav-zone qw-nav-prev" role="button" title=""><div class="qw-nav-btn">‹</div></div>
     <div id="qwNavNext" class="qw-nav-zone qw-nav-next" role="button" title=""><div class="qw-nav-btn">›</div></div>
     <!-- 工具箱: 展开"分组 / 会话 / 常用语"快捷面板 (工作台底部那三个入口在侧栏里的合并版, 逻辑见 sidepanel.js).
-         右侧【悬浮】按钮而非输入条里的图标 —— 输入条只在群问模式显示, 挂在里面的话单聊模式就够不着了. -->
+         右侧【悬浮】按钮而非输入条里的图标 —— 输入条只在群发模式显示, 挂在里面的话单聊模式就够不着了. -->
     <div id="qwToolboxBtn" class="qw-toolbox-fab" role="button" aria-haspopup="dialog" aria-expanded="false" data-i18n-attr="title:sidepanel.toolbox" title="工具箱">
       <!-- 工具箱: 箱体 + 顶部提手 + 中缝与锁扣 -->
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">

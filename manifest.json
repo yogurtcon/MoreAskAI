@@ -52,7 +52,6 @@
     "cookies"
   ],
   "host_permissions": [
-    "https://qun-wen.com/*",
     "*://*.copilot.com/*",
     "*://*.chatgpt.com/*",
     "*://*.claude.ai/*",
