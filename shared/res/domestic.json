@@ -39,6 +39,23 @@
     }
   },
   {
+    "id": "dots",
+    "name": "点点",
+    "url": "https://www.xiaohongshu.com/ai_chat",
+    "theme": "filter",
+    "actions": {
+      "readQuestions": { "selectors": [".user-message__text"] },
+      "readAnswer": { "selectors": [".ai-message .xhs-ai-md-container"] },
+      "findInput": { "selectors": ["textarea[name='aiSearchTextarea']:not([aria-hidden='true'])", "textarea.textarea--v1-caret:not([aria-hidden='true'])"] },
+      "addText": { "method": "insertText" },
+      "send": { "method": "enter" },
+      "hideInput": {
+        "selectors": ["div.textarea-container.ai-chat-input-box"],
+        "newChatUrlPattern": "^https?://(?:www\\.)?xiaohongshu\\.com/ai_chat(?:\\?(?![^#]*conversationId=)[^#]*)?$"
+      }
+    }
+  },
+  {
     "id": "doubao",
     "name": "豆包",
     "url": "https://www.doubao.com",
