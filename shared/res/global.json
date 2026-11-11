@@ -7,6 +7,7 @@
     "themeChrome": { "attrs": ["class"] },
     "actions": {
       "findInput": { "selectors": ["#prompt-textarea", "form[data-chatgpt-composer] .ProseMirror[contenteditable='true']", "#mobile-composer-prompt"] },
+      "clearInput": { "selectors": ["#prompt-textarea", "form[data-chatgpt-composer] .ProseMirror[contenteditable='true']", "textarea", "div[contenteditable='true']"] },
       "addText": { "method": "insertText" },
       "addFile": {
         "method": "fileInput",
