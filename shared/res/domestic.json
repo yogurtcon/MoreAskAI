@@ -46,8 +46,27 @@
     "actions": {
       "readQuestions": { "selectors": [".user-message__text"] },
       "readAnswer": { "selectors": [".ai-message .xhs-ai-md-container"] },
-      "findInput": { "selectors": ["textarea[name='aiSearchTextarea']:not([aria-hidden='true'])", "textarea.textarea--v1-caret:not([aria-hidden='true'])"] },
+      "collapseSidebar": {
+        "selectors": [".xhs-ai-fold-icon [role='button']"],
+        "expandSelectors": [".xhs-ai-history-collapsed svg.xhs-ai-history-icon-btn"],
+        "expandedSelectors": [".xhs-ai-history-expanded .xhs-ai-history-panel"],
+        "collapsedSelectors": [".xhs-ai-history-collapsed"]
+      },
+      "expand": {
+        "selectors": [
+          "body:not(:has(.ai-chat-input-box)) a.link-wrapper[href^='/ai_chat']",
+          "body:not(:has(.ai-chat-input-box)) a.bottom-channel[href^='/ai_chat']"
+        ],
+        "waitFor": ".ai-chat-welcome__input .ai-chat-input-box textarea[name='aiSearchTextarea']:not([button-hp-installed]), .xhs-ai-chat-page:not(.xhs-ai-chat-page--welcome) .xhs-chat-dock-content .ai-chat-input-box textarea[name='aiSearchTextarea']:not([button-hp-installed])",
+        "settleDelay": 500
+      },
+      "findInput": { "selectors": [".ai-chat-input-box textarea[name='aiSearchTextarea']:not([button-hp-installed])", "textarea[name='aiSearchTextarea']:not([aria-hidden='true'])", "textarea.textarea--v1-caret:not([aria-hidden='true'])"] },
       "addText": { "method": "insertText" },
+      "addFile": {
+        "method": "paste",
+        "waitFor": ".ai-chat-input-box:has(.image-pure-upload-preview__item):not(:has(.image-pure-upload-preview__mask)) .submit-button-wrapper:not(.disabled)",
+        "waitForTimeout": 15000
+      },
       "send": { "method": "enter" },
       "hideInput": {
         "selectors": ["div.textarea-container.ai-chat-input-box"],
